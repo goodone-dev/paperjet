@@ -3,6 +3,8 @@ const path = require("path");
 require("dotenv").config();
 
 // Environment variable overrides
+process.env.BROWSER = "none";
+
 const config = {
   enableHealthCheck: process.env.ENABLE_HEALTH_CHECK === "true",
 };
