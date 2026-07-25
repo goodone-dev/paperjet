@@ -87,7 +87,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
             }
             onChange(newRows);
         }
-    }, [bulkText, isBulkEdit]);
+    }, [bulkText, isBulkEdit, onChange]);
 
     const inputBase =
         'h-9 border-0 border-l border-border rounded-none text-sm mono bg-transparent focus:outline-none focus-visible:ring-0 focus-visible:bg-primary-soft/50 px-3 w-full';

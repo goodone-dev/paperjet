@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Globe } from 'lucide-react';
 import { KeyValueEditor } from './KeyValueEditor';
 import { Badge } from '@/components/ui/badge';
@@ -12,17 +12,17 @@ interface EnvironmentEditorProps {
 
 // Environment variable editor shown as a main-area tab. Auto-saves when focus is lost.
 export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ env, onChange }) => {
-    const initialRows = (): KeyValueRow[] =>
+    const initialRows = useCallback((): KeyValueRow[] =>
         env.variables && env.variables.length > 0
             ? (env.variables as KeyValueRow[])
-            : [{ id: 'v-empty', key: '', value: '', enabled: true }];
+            : [{ id: 'v-empty', key: '', value: '', enabled: true }], [env.variables]);
 
     const [localVars, setLocalVars] = useState<KeyValueRow[]>(initialRows);
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setLocalVars(initialRows());
-    }, [env.id, env.variables]);
+    }, [env.id, initialRows]);
 
     const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
         if (containerRef.current && !containerRef.current.contains(e.relatedTarget as Node | null)) {
