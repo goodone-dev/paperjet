@@ -1,0 +1,121 @@
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Code2 } from 'lucide-react';
+import { KeyValueEditor } from '../KeyValueEditor';
+import { EnvTextarea } from '../EnvAutocomplete';
+import type { RequestTab } from '@/types/tab';
+import type { EnvVariable } from '@/types/environment';
+
+interface BodyEditorProps {
+    request: RequestTab;
+    update: (patch: Partial<RequestTab>) => void;
+    envVariables?: EnvVariable[];
+}
+
+export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVariables = [] }) => {
+    const types = [
+        { id: 'none', label: 'none' },
+        { id: 'form-data', label: 'form-data' },
+        { id: 'x-www-form-urlencoded', label: 'x-www-form-urlencoded' },
+        { id: 'raw', label: 'raw' },
+        { id: 'binary', label: 'binary' },
+        { id: 'graphql', label: 'GraphQL' },
+    ] as const;
+
+    return (
+        <div>
+            <div className="mb-3">
+                <RadioGroup
+                    value={request.bodyType}
+                    onValueChange={(v: string) => update({ bodyType: v as RequestTab['bodyType'] })}
+                    className="flex flex-wrap gap-x-5 gap-y-2"
+                >
+                    {types.map((t) => (
+                        <label
+                            key={t.id}
+                            htmlFor={`bt-${t.id}`}
+                            className="flex items-center gap-2 cursor-pointer text-[13px] text-foreground"
+                        >
+                            <RadioGroupItem value={t.id} id={`bt-${t.id}`} />
+                            {t.label}
+                        </label>
+                    ))}
+                    <div className="ml-auto flex items-center gap-2">
+                        {request.bodyType === 'raw' && (
+                            <Select defaultValue="json">
+                                <SelectTrigger className="h-7 text-xs w-28 bg-card">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="json">JSON</SelectItem>
+                                    <SelectItem value="xml">XML</SelectItem>
+                                    <SelectItem value="html">HTML</SelectItem>
+                                    <SelectItem value="text">Text</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        )}
+                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5">
+                            <Code2 className="h-3.5 w-3.5" /> Beautify
+                        </Button>
+                    </div>
+                </RadioGroup>
+            </div>
+
+            {request.bodyType === 'none' && (
+                <div className="rounded-lg border border-dashed border-border bg-secondary/40 p-12 text-center">
+                    <p className="text-sm text-muted-foreground">This request does not have a body</p>
+                </div>
+            )}
+            {request.bodyType === 'raw' && (
+                <div className="rounded-lg border border-border bg-card overflow-hidden">
+                    <div className="flex bg-secondary/50 border-b border-border">
+                        <div className="px-3 py-2 text-[11px] text-muted-foreground mono uppercase tracking-wider font-semibold">JSON</div>
+                    </div>
+                    <EnvTextarea
+                        envVariables={envVariables}
+                        value={request.body}
+                        onChange={(e) => update({ body: e.target.value })}
+                        spellCheck={false}
+                        className="min-h-[260px] mono text-sm border-0 rounded-none focus-visible:ring-0 bg-card resize-none leading-relaxed w-full p-3 outline-none"
+                    />
+                </div>
+            )}
+            {request.bodyType === 'form-data' && (
+                <KeyValueEditor
+                    rows={request.bodyFormData}
+                    envVariables={envVariables}
+                    onChange={(rows) => update({ bodyFormData: rows })}
+                    placeholderKey="key"
+                    placeholderValue="value"
+                />
+            )}
+            {request.bodyType === 'x-www-form-urlencoded' && (
+                <KeyValueEditor
+                    rows={request.bodyUrlEncoded}
+                    envVariables={envVariables}
+                    onChange={(rows) => update({ bodyUrlEncoded: rows })}
+                    placeholderKey="key"
+                    placeholderValue="value"
+                />
+            )}
+            {request.bodyType === 'binary' && (
+                <div className="rounded-lg border border-dashed border-border bg-secondary/40 p-12 text-center">
+                    <Button variant="outline" size="sm">
+                        Select File
+                    </Button>
+                </div>
+            )}
+            {request.bodyType === 'graphql' && (
+                <div className="rounded-lg border border-border bg-card overflow-hidden">
+                    <Textarea
+                        defaultValue={'query {\n  user(id: "1") {\n    id\n    name\n    email\n  }\n}'}
+                        className="min-h-[220px] mono text-sm border-0 rounded-none focus-visible:ring-0 bg-card resize-none"
+                    />
+                </div>
+            )}
+        </div>
+    );
+};
