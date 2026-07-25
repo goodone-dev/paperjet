@@ -1,6 +1,7 @@
-import type { BackendRequest, BackendKeyValue, KeyValueRow, AuthConfig, BodyConfig } from '@/types/collection';
+import type { BackendKeyValue, KeyValueRow, AuthConfig, BodyConfig } from '@/types/collection';
 import type { RequestTab } from '@/types/tab';
 import type { EnvVariable } from '@/types/environment';
+import type { WireRequestResponse } from './api';
 import { resolveEnvVars } from './env-resolve';
 
 interface OpenRequestMeta {
@@ -35,7 +36,7 @@ function mapBackendAuth(raw: AuthConfig | undefined): AuthConfig {
  * Backend request DTO → in-memory tab shape used across the UI.
  * Single source of truth for the mapping (replaces inline logic in AppWorkspace.handleOpenRequest).
  */
-export function mapBackendRequestToTab(full: BackendRequest, meta: OpenRequestMeta): Partial<RequestTab> {
+export function mapBackendRequestToTab(full: WireRequestResponse, meta: OpenRequestMeta): Partial<RequestTab> {
     const body = (full.body || { type: 'none' }) as any;
     return {
         sourceId: full.id,

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { UpdateRequest } from '@/wailsjs/go/main/App';
+import { UpdateRequest } from '@/lib/api';
 import { mapTabToSavePayload } from '@/lib/request-mapper';
 import type { RequestTab, Tab } from '@/types/tab';
 

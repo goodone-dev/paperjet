@@ -33,7 +33,8 @@ import {
     RenameRequest,
     DeleteRequest,
     DuplicateRequest,
-} from '@/wailsjs/go/main/App';
+    type CreateRequestPayload,
+} from '@/lib/api';
 
 interface HistoryEntry {
     id: string;

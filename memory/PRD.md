@@ -36,12 +36,18 @@ src/
 - **Phase 3 – Components**: All 12 components converted to `.tsx` with explicit prop interfaces. `RequestPanel` split into `request-panel/` subdirectory. Sidebar prop-drilling fix: typed `SidebarActions` slice replaces the drilled `data` bag (Finding #11). `ResponsePanel` unnecessary `tokenizeJSON` dep removed (Finding #12). `SettingRow` intent-comment added (Finding #16). Duplicated `HTTP_METHODS` / `methodColorMap` consolidated into `types/collection.ts` (Finding #7). `useConfirmDialog` internal wrapper inlined (Finding #8). `resolveEnvVars` moved out of `RequestPanel` into `lib/env-resolve.ts` (Finding #13).
 - **Phase 4 – Cleanup**: `src/data/mockData.js`, `src/hooks/useToast.js`, `src/lib/*.js` deleted (Findings #6, #15, #17). Old `jsconfig.json` removed.
 
+## Follow-up (Wails typing, 2026-01)
+- New `src/lib/api.ts` = hand-written type-safe wrapper around every Wails binding.
+- Uses accurate runtime wire types (`WireCollectionResponse`, `WireRequestResponse`, etc.) — the Wails-generated `models.ts` describes UUIDs as `number[]` because they are `[16]byte` in Go, but at runtime the JSON bridge sends strings, so those types were unusable directly.
+- All consumers (`useWorkspaceData`, `useRequestSend`, `useRequestSave`, `AppWorkspace`) now import from `@/lib/api` instead of `@/wailsjs/go/main/App`. `wailsjs/` stays untouched and excluded from tsc.
+- `mapBackendRequestToTab` now accepts `WireRequestResponse` directly (was `any`), `SendRequest` returns `WireProxyResponse` (was `any`).
+
 ## Verification
 - `npx tsc --noEmit` → 0 errors
 - `yarn build` → succeeds, main.js gzipped 228 kB, css 11.45 kB
 
 ## Backlog
-- P2: Wails bindings could get hand-written `.d.ts` shims for real type-safety at the boundary (user chose to leave untyped for now)
 - P2: Add a real test runner (Jest/Vitest) and unit tests for `request-mapper` and `url-sync` pure functions
 - P2: `SettingsPanel` toggles are ephemeral — persist to backend when a settings backend endpoint exists
 - P3: Convert `App.js` / `index.js` to `.tsx` (currently work as-is)
+- P3: Tighten remaining `res: any` mappings inside `useWorkspaceData` — wire types are now available for stricter inference at each backend call site

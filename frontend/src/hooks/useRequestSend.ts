@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { SendRequest } from '@/wailsjs/go/main/App';
+import { SendRequest, type WireProxyResponse } from '@/lib/api';
 import { buildRequestPayload } from '@/lib/request-mapper';
 import type { RequestTab, Tab } from '@/types/tab';
 import type { Environment } from '@/types/environment';
@@ -40,7 +40,7 @@ export function useRequestSend(
         const start = performance.now();
         try {
             const payload = buildRequestPayload(reqTab, envVars);
-            const res: any = await SendRequest(payload as any);
+            const res: WireProxyResponse = await SendRequest(payload);
             const elapsed = Math.max(0, Math.floor(performance.now() - start));
 
             const responseData: ResponseData = {
@@ -50,7 +50,7 @@ export function useRequestSend(
                 size: new Blob([res.body || '']).size,
                 headers: Object.entries(res.headers || {}).map(([key, value]) => ({
                     key,
-                    value: value as string,
+                    value,
                 })),
                 body: res.body,
                 error: false,

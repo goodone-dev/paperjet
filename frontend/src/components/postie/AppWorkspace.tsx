@@ -18,7 +18,7 @@ import { useRequestSend } from '@/hooks/useRequestSend';
 import { useRequestSave } from '@/hooks/useRequestSave';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { cn } from '@/lib/utils';
-import { GetRequest } from '@/wailsjs/go/main/App';
+import { GetRequest } from '@/lib/api';
 import { mapBackendRequestToTab } from '@/lib/request-mapper';
 import type { Collection } from '@/types/collection';
 import type { RequestTab, Tab } from '@/types/tab';
@@ -72,7 +72,7 @@ export default function AppWorkspace() {
         async (req: Partial<RequestTab> & Partial<RequestSummary>) => {
             if (req.id && !req.id.startsWith('req-')) {
                 try {
-                    const full: any = await GetRequest(req.id);
+                    const full = await GetRequest(req.id);
                     const mapped = mapBackendRequestToTab(full, {
                         colId: req.colId ?? null,
                         folderId: req.folderId ?? null,
@@ -92,7 +92,7 @@ export default function AppWorkspace() {
     const handleSaveRequest = useRequestSave(
         activeTab,
         { updateTab, markClean },
-        { addRequest: data.addRequest as any, updateRequest: data.updateRequest },
+        { addRequest: data.addRequest, updateRequest: data.updateRequest },
         (cfg) => setSaveRequest(cfg),
     );
 
