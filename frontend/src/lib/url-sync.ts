@@ -61,8 +61,10 @@ export function syncParamsFromUrl(newUrl: string, currentParams: KeyValueRow[]):
     try {
         const urlObj = new URL(newUrl.includes('://') ? newUrl : `http://dummy/${newUrl}`);
         searchParams = Array.from(urlObj.searchParams.entries()).filter(([k, v]) => k || v);
-    } catch {
-        /* ignore malformed url */
+    } catch (err) {
+        // Malformed URL — expected while the user is still typing. Nothing to log,
+        // but leave the annotation so future maintainers see the intent.
+        void err;
     }
 
     const newParams: KeyValueRow[] = [];

@@ -16,6 +16,7 @@ import { useWorkspaceData } from '@/hooks/useWorkspaceData';
 import { useTabs } from '@/hooks/useTabs';
 import { useRequestSend } from '@/hooks/useRequestSend';
 import { useRequestSave } from '@/hooks/useRequestSave';
+import { useEnvironmentTabSync } from '@/hooks/useEnvironmentTabSync';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { cn } from '@/lib/utils';
 import { GetRequest } from '@/lib/api';
@@ -112,41 +113,7 @@ export default function AppWorkspace() {
     }, [handleSaveRequest]);
 
     // Keep environment tabs in sync with rename/delete of underlying env
-    useEffect(() => {
-        let changed = false;
-        const nextTabs: Tab[] = tabs
-            .map((t) => {
-                if (t.type === 'environment') {
-                    const env = data.environments.find((e) => e.id === t.envId);
-                    if (env && env.name !== t.name) {
-                        changed = true;
-                        return { ...t, name: env.name } as Tab;
-                    }
-                }
-                return t;
-            })
-            .filter((t) => {
-                if (t.type === 'environment') {
-                    const exists = data.environments.some((e) => e.id === t.envId);
-                    if (!exists) {
-                        changed = true;
-                        return false;
-                    }
-                }
-                return true;
-            });
-
-        if (changed) {
-            if (nextTabs.length === 0) {
-                closeAll();
-            } else {
-                setTabs(nextTabs);
-                if (!nextTabs.find((t) => t.id === activeTabId)) {
-                    setActiveTabId(nextTabs[0].id);
-                }
-            }
-        }
-    }, [data.environments, tabs, closeAll, setTabs, setActiveTabId, activeTabId]);
+    useEnvironmentTabSync(tabs, activeTabId, data.environments, { setTabs, setActiveTabId, closeAll });
 
     const tabActions = {
         onNew: newTab,

@@ -22,7 +22,6 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ env, onCha
 
     useEffect(() => {
         setLocalVars(initialRows());
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [env.id, env.variables]);
 
     const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {

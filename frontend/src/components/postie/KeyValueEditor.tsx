@@ -87,7 +87,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
             }
             onChange(newRows);
         }
-    }, [bulkText, isBulkEdit]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [bulkText, isBulkEdit]);
 
     const inputBase =
         'h-9 border-0 border-l border-border rounded-none text-sm mono bg-transparent focus:outline-none focus-visible:ring-0 focus-visible:bg-primary-soft/50 px-3 w-full';

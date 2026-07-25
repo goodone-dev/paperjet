@@ -278,6 +278,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {NAV_ITEMS.map((item) => {
                         const Icon = item.icon;
                         const isActive = activeView === item.id;
+                        let stateClass: string;
+                        if (item.disabled) {
+                            stateClass = 'text-muted-foreground/40 cursor-not-allowed';
+                        } else if (isActive) {
+                            stateClass = 'text-primary bg-primary-soft';
+                        } else {
+                            stateClass = 'text-muted-foreground hover:bg-sidebar-hover hover:text-foreground';
+                        }
                         return (
                             <Tooltip key={item.id}>
                                 <TooltipTrigger asChild>
@@ -287,11 +295,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                         onClick={() => !item.disabled && setActiveView(item.id)}
                                         className={cn(
                                             'h-10 w-10 rounded-lg flex items-center justify-center transition-colors relative',
-                                            item.disabled
-                                                ? 'text-muted-foreground/40 cursor-not-allowed'
-                                                : isActive
-                                                    ? 'text-primary bg-primary-soft'
-                                                    : 'text-muted-foreground hover:bg-sidebar-hover hover:text-foreground',
+                                            stateClass,
                                         )}
                                     >
                                         <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
@@ -369,8 +373,10 @@ function makeDnd(dragRef: React.MutableRefObject<DragSource | null>, actions: Si
             e.dataTransfer.effectAllowed = 'move';
             try {
                 e.dataTransfer.setData('text/plain', payload.kind);
-            } catch {
-                /* noop */
+            } catch (err) {
+                // Some browsers throw on `setData` when a drag isn't fully initialised.
+                // The drag itself continues via `dragRef.current`, so this is safe to log & swallow.
+                console.debug('[dnd] setData failed', err);
             }
         }
         e.stopPropagation();

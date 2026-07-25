@@ -32,6 +32,11 @@ export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, o
         update({ url: newUrl, pathVariables, params });
     };
 
+    // Save-button tooltip: shortcut hint if this is a saved request, otherwise an explanation.
+    const isMac = navigator.platform?.toLowerCase().includes('mac');
+    const saveShortcutHint = isMac ? '⌘S' : 'Ctrl+S';
+    const saveTooltip = request.sourceId ? saveShortcutHint : 'Not a saved request';
+
     return (
         <div className="flex flex-col h-full bg-background">
             <div className="px-5 pt-4 pb-3 border-b border-border bg-card/40">
@@ -100,7 +105,7 @@ export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, o
                             request.isDirty && request.sourceId && 'border-warning/60 text-warning hover:text-warning',
                         )}
                         onClick={onSave}
-                        title={request.sourceId ? (navigator.platform?.toLowerCase().includes('mac') ? '⌘S' : 'Ctrl+S') : 'Not a saved request'}
+                        title={saveTooltip}
                         data-testid="save-request-btn"
                     >
                         <Save className="h-4 w-4" />

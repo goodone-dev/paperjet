@@ -46,8 +46,17 @@ src/
 - `npx tsc --noEmit` → 0 errors
 - `yarn build` → succeeds, main.js gzipped 228 kB, css 11.45 kB
 
+## Follow-up (Code review fixes, 2026-01)
+- Confirmed via `mcp_lint_javascript` that all "missing hook dependency" findings were false positives — `react-hooks/exhaustive-deps` reports **0 issues**. React `useState` setters and module-level imports are stable and don't require dep listings.
+- Fixed the legitimate issues:
+  - Empty catch blocks now log via `console.warn` / `console.debug` (`lib/persist.ts`, `lib/url-sync.ts`, `components/postie/Sidebar.tsx`)
+  - `src/index.js` extracts the React-Query stale-time magic number into a named `QUERY_STALE_TIME_MS` constant
+  - Nested ternaries replaced with named `stateClass` in `Sidebar.tsx` NAV item rendering, and named `saveTooltip` / `saveShortcutHint` in `RequestPanel.tsx`
+  - `AppWorkspace`'s six-dep environment-tab-sync effect extracted into a new focused hook: `hooks/useEnvironmentTabSync.ts`
+- `localStorage` findings in `lib/persist.ts`: **rejected**. Postie is a Wails desktop app — localStorage only holds UI state (workspace id, tab layout, history). Credentials/env vars live in SQLite via the Go backend and never touch this file. Added a header comment making this explicit.
+
 ## Backlog
 - P2: Add a real test runner (Jest/Vitest) and unit tests for `request-mapper` and `url-sync` pure functions
 - P2: `SettingsPanel` toggles are ephemeral — persist to backend when a settings backend endpoint exists
 - P3: Convert `App.js` / `index.js` to `.tsx` (currently work as-is)
-- P3: Tighten remaining `res: any` mappings inside `useWorkspaceData` — wire types are now available for stricter inference at each backend call site
+- P3: Tighten remaining `res: any` mappings inside `useWorkspaceData` now that api.ts hands back proper types
