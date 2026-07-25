@@ -17,13 +17,15 @@ import { useTabs } from '@/hooks/useTabs';
 import { useRequestSend } from '@/hooks/useRequestSend';
 import { useRequestSave } from '@/hooks/useRequestSave';
 import { useEnvironmentTabSync } from '@/hooks/useEnvironmentTabSync';
+import { useCollectionTabSync } from '@/hooks/useCollectionTabSync';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { cn } from '@/lib/utils';
 import { GetRequest } from '@/lib/api';
-import { mapBackendRequestToTab } from '@/lib/request-mapper';
+import { mapBackendRequestToTab, mapHistoryEntryToTab } from '@/lib/request-mapper';
 import type { Collection } from '@/types/collection';
 import type { RequestTab, Tab } from '@/types/tab';
 import type { RequestSummary } from '@/types/collection';
+import type { HistoryEntry } from '@/types/history';
 
 interface ConfirmState {
     open: boolean;
@@ -59,6 +61,8 @@ export default function AppWorkspace() {
         setActiveTabId,
         updateTab,
         markClean,
+        discardChanges,
+        togglePin,
         openRequest,
         openEnvironmentTab,
         newTab,
@@ -66,6 +70,7 @@ export default function AppWorkspace() {
         closeTab,
         closeOthers,
         closeAll,
+        forceCloseAll,
     } = tabsApi;
 
     // Open a collection request: fetch full data from backend then open tab
@@ -85,6 +90,14 @@ export default function AppWorkspace() {
                 }
             }
             openRequest(req);
+        },
+        [openRequest],
+    );
+
+    // Replay a history entry in a fresh tab (no sourceId so it opens standalone).
+    const handleReplayHistory = useCallback(
+        (entry: HistoryEntry) => {
+            openRequest(mapHistoryEntryToTab(entry));
         },
         [openRequest],
     );
@@ -114,10 +127,17 @@ export default function AppWorkspace() {
 
     // Keep environment tabs in sync with rename/delete of underlying env
     useEnvironmentTabSync(tabs, activeTabId, data.environments, { setTabs, setActiveTabId, closeAll });
+    // Keep request tabs in sync when a sourced request is renamed / moved / deleted.
+    useCollectionTabSync(tabs, data.collections, activeTabId, setActiveTabId, { setTabs });
+
+    const activeRequestSourceId =
+        activeTab?.type === 'request' ? (activeTab as RequestTab).sourceId ?? null : null;
 
     const tabActions = {
         onNew: newTab,
         onDuplicate: duplicateTab,
+        onPin: togglePin,
+        onDiscardChanges: discardChanges,
         onClose: (id: string) => {
             const tab = tabs.find((t) => t.id === id);
             if (tab && tab.type === 'request' && tab.isDirty) {
@@ -134,18 +154,18 @@ export default function AppWorkspace() {
         onCloseOthers: (id: string) =>
             openConfirm({
                 title: 'Close other tabs?',
-                description: 'All tabs except this one will be closed.',
+                description: 'All tabs except this one (and pinned tabs) will be closed.',
                 confirmText: 'Close Others',
                 onConfirm: () => closeOthers(id),
             }),
         onCloseAll: () =>
             openConfirm({
                 title: 'Close all tabs?',
-                description: 'All open tabs will be closed.',
+                description: 'All open tabs will be closed. Pinned tabs are kept.',
                 confirmText: 'Close All',
                 onConfirm: () => closeAll(),
             }),
-        onForceClose: () => closeAll(),
+        onForceClose: () => forceCloseAll(),
     };
 
     const openMove = useCallback((col: Collection) => setMove({ open: true, col }), []);
@@ -165,6 +185,7 @@ export default function AppWorkspace() {
         deleteCollection: data.deleteCollection,
         toggleCollection: data.toggleCollection,
         collapseCollection: data.collapseCollection,
+        expandCollection: data.expandCollection,
         toggleFavorite: data.toggleFavorite,
         duplicateCollection: data.duplicateCollection,
         addFolder: data.addFolder,
@@ -172,6 +193,7 @@ export default function AppWorkspace() {
         deleteFolder: data.deleteFolder,
         toggleFolder: data.toggleFolder,
         collapseFolder: data.collapseFolder,
+        expandFolder: data.expandFolder,
         duplicateFolder: data.duplicateFolder,
         addRequest: data.addRequest,
         renameRequest: data.renameRequest,
@@ -184,6 +206,7 @@ export default function AppWorkspace() {
         deleteEnvironment: data.deleteEnvironment,
         duplicateEnvironment: data.duplicateEnvironment,
         setActiveEnvironment: data.setActiveEnvironment,
+        clearHistory: data.clearHistory,
     };
 
     return (
@@ -206,11 +229,13 @@ export default function AppWorkspace() {
                     <Sidebar
                         actions={sidebarActions}
                         onOpenRequest={handleOpenRequest}
+                        onReplayHistory={handleReplayHistory}
                         onOpenEnvironment={openEnvironmentTab}
                         onMove={openMove}
                         activeView={activeView}
                         setActiveView={setActiveView}
                         openConfirm={openConfirm}
+                        activeRequestSourceId={activeRequestSourceId}
                     />
                 </Panel>
 
@@ -240,6 +265,7 @@ export default function AppWorkspace() {
                                         onUpdate={updateTab}
                                         onSend={handleSend}
                                         onSave={handleSaveRequest}
+                                        onDiscard={() => discardChanges((activeTab as RequestTab).id)}
                                         envVariables={activeEnvVars}
                                     />
                                 </Panel>

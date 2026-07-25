@@ -1,5 +1,18 @@
 import React, { useRef, useEffect } from 'react';
-import { X, Plus, Globe, FilePlus, Copy, XCircle, XSquare, Trash2, type LucideIcon } from 'lucide-react';
+import {
+    X,
+    Plus,
+    Globe,
+    FilePlus,
+    Copy,
+    XCircle,
+    XSquare,
+    Trash2,
+    Pin,
+    PinOff,
+    RotateCcw,
+    type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MethodLabel } from './MethodBadge';
 import {
@@ -14,6 +27,8 @@ import type { Tab } from '@/types/tab';
 export interface RequestTabsBarActions {
     onNew: () => void;
     onDuplicate: (id: string) => void;
+    onPin: (id: string) => void;
+    onDiscardChanges: (id: string) => void;
     onClose: (id: string) => void;
     onCloseOthers: (id: string) => void;
     onCloseAll: () => void;
@@ -33,6 +48,7 @@ interface MenuItem {
     testId: string;
     onClick: () => void;
     danger?: boolean;
+    disabled?: boolean;
     separator?: false;
 }
 
@@ -43,7 +59,7 @@ interface SeparatorItem {
 type CtxMenuEntry = MenuItem | SeparatorItem;
 
 export const RequestTabsBar: React.FC<RequestTabsBarProps> = ({ tabs, activeId, onSelect, actions }) => {
-    const { onNew, onDuplicate, onClose, onCloseOthers, onCloseAll, onForceClose } = actions;
+    const { onNew, onDuplicate, onPin, onDiscardChanges, onClose, onCloseOthers, onCloseAll, onForceClose } = actions;
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -69,10 +85,27 @@ export const RequestTabsBar: React.FC<RequestTabsBarProps> = ({ tabs, activeId, 
                 {tabs.map((tab) => {
                     const isActive = tab.id === activeId;
                     const isEnv = tab.type === 'environment';
-                    const isDirty = tab.type === 'request' && tab.isDirty;
+                    const isRequest = tab.type === 'request';
+                    const isDirty = isRequest && (tab as any).isDirty;
+                    const isPinned = isRequest && !!(tab as any).pinned;
+
                     const menu: CtxMenuEntry[] = [
                         { label: 'New Request', icon: FilePlus, testId: 'tab-ctx-new', onClick: () => onNew() },
                         { label: 'Duplicate Tab', icon: Copy, testId: 'tab-ctx-duplicate', onClick: () => onDuplicate(tab.id) },
+                        {
+                            label: isPinned ? 'Unpin Tab' : 'Pin Tab',
+                            icon: isPinned ? PinOff : Pin,
+                            testId: `tab-ctx-${isPinned ? 'unpin' : 'pin'}`,
+                            onClick: () => onPin(tab.id),
+                            disabled: !isRequest,
+                        },
+                        {
+                            label: 'Discard Changes',
+                            icon: RotateCcw,
+                            testId: 'tab-ctx-discard-changes',
+                            onClick: () => onDiscardChanges(tab.id),
+                            disabled: !isDirty,
+                        },
                         { separator: true },
                         { label: 'Close Tab', icon: X, testId: 'tab-ctx-close', onClick: () => onClose(tab.id) },
                         { label: 'Close Other Tabs', icon: XCircle, testId: 'tab-ctx-close-others', onClick: () => onCloseOthers(tab.id) },
@@ -84,17 +117,28 @@ export const RequestTabsBar: React.FC<RequestTabsBarProps> = ({ tabs, activeId, 
                             <ContextMenuTrigger asChild>
                                 <div
                                     data-testid={`open-tab-${tab.id}`}
+                                    data-pinned={isPinned ? 'true' : undefined}
                                     onClick={() => onSelect(tab.id)}
                                     className={cn(
-                                        'group h-10 min-w-[160px] max-w-[240px] flex items-center gap-2 px-3 border-r border-border cursor-pointer transition-colors relative shrink-0',
-                                        isActive ? 'bg-background text-foreground' : 'bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
+                                        'group h-10 flex items-center gap-2 px-3 border-r border-border cursor-pointer transition-colors relative shrink-0',
+                                        isPinned ? 'min-w-[104px] max-w-[160px]' : 'min-w-[160px] max-w-[240px]',
+                                        isActive
+                                            ? 'bg-background text-foreground'
+                                            : 'bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
                                     )}
                                 >
                                     {isActive && <span className="absolute top-0 left-0 right-0 h-0.5 bg-primary" />}
                                     {isEnv ? (
                                         <Globe className="h-3.5 w-3.5 text-primary shrink-0" />
                                     ) : (
-                                        <MethodLabel method={tab.method} />
+                                        <MethodLabel method={(tab as any).method} />
+                                    )}
+                                    {isPinned && (
+                                        <Pin
+                                            data-testid={`tab-pin-icon-${tab.id}`}
+                                            className="h-3 w-3 shrink-0 text-primary rotate-45"
+                                            aria-label="Pinned"
+                                        />
                                     )}
                                     <span className="flex-1 text-[13px] truncate">
                                         {tab.name || (isEnv ? 'Environment' : 'Untitled')}
@@ -127,7 +171,8 @@ export const RequestTabsBar: React.FC<RequestTabsBarProps> = ({ tabs, activeId, 
                                         <ContextMenuItem
                                             key={it.label}
                                             data-testid={it.testId}
-                                            onSelect={() => it.onClick()}
+                                            disabled={it.disabled}
+                                            onSelect={() => !it.disabled && it.onClick()}
                                             className={cn(
                                                 'text-[13px] gap-2 cursor-pointer',
                                                 it.danger && 'text-destructive focus:text-destructive',

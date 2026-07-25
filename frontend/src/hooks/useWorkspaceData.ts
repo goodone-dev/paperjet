@@ -6,6 +6,8 @@ import type { Collection, Folder, RequestSummary } from '@/types/collection';
 import type { Environment, EnvVariable } from '@/types/environment';
 import type { RequestTab } from '@/types/tab';
 import type { DragSource, DropDest } from '@/types/dnd';
+import type { HistoryEntry } from '@/types/history';
+import { prune7Days } from '@/lib/history-format';
 import {
     ListWorkspaces,
     CreateWorkspace,
@@ -35,13 +37,6 @@ import {
     DuplicateRequest,
     type CreateRequestPayload,
 } from '@/lib/api';
-
-interface HistoryEntry {
-    id: string;
-    method: string;
-    url: string;
-    time: string;
-}
 
 type Updater<T> = T | ((prev: T) => T);
 
@@ -97,7 +92,7 @@ interface WsState {
 function loadWsState(workspaceId: string | null): WsState {
     return {
         workspaceId,
-        history: loadState<HistoryEntry[]>(`history_${workspaceId}`, []),
+        history: prune7Days(loadState<HistoryEntry[]>(`history_${workspaceId}`, [])),
         activeEnvironmentId: loadState<string | null>(`activeEnvironmentId_${workspaceId}`, null),
     };
 }
@@ -343,6 +338,41 @@ export function useWorkspaceData() {
         mapCol(setCollections, id, (c) => ({ ...c, expanded: false, folders: collapseAll(c.folders) }));
     }, []);
 
+    // Expand collection + every nested folder. Requires collection to be loaded
+    // — mirrors `toggleCollection` so we still fetch from the backend if needed.
+    const expandCollection = useCallback(
+        async (id: string) => {
+            const expandAll = (folders: Folder[]): Folder[] =>
+                (folders || []).map((f) => ({ ...f, expanded: true, folders: expandAll(f.folders || []) }));
+            const col = collections.find((c) => c.id === id);
+            if (col && !col.loaded) {
+                try {
+                    const c: any = await GetCollection(id);
+                    setCollections((cs) =>
+                        cs.map((oc) =>
+                            oc.id === id
+                                ? {
+                                      ...c,
+                                      favorite: c.is_favorite,
+                                      folders: expandAll(c.folders || []),
+                                      requests: c.requests || [],
+                                      expanded: true,
+                                      loaded: true,
+                                  }
+                                : oc,
+                        ),
+                    );
+                    return;
+                } catch (err) {
+                    console.error('Failed to expand collection:', err);
+                    return;
+                }
+            }
+            mapCol(setCollections, id, (c) => ({ ...c, expanded: true, folders: expandAll(c.folders) }));
+        },
+        [collections],
+    );
+
     const toggleFavorite = useCallback(
         async (id: string) => {
             try {
@@ -457,26 +487,37 @@ export function useWorkspaceData() {
         }));
     }, []);
 
+    const expandFolder = useCallback((colId: string, folderId: string) => {
+        const expandAll = (folders: Folder[]): Folder[] =>
+            (folders || []).map((subF) => ({ ...subF, expanded: true, folders: expandAll(subF.folders) }));
+        mapFolder(setCollections, colId, folderId, (f) => ({
+            ...f,
+            expanded: true,
+            folders: expandAll(f.folders),
+        }));
+    }, []);
+
     const duplicateFolder = useCallback(async (colId: string, folderId: string) => {
         try {
-            const res: any = await DuplicateFolder(folderId);
-            const newFolder: Folder = {
-                ...res,
-                expanded: false,
-                folders: res.folders ?? [],
-                requests: res.requests ?? [],
-            };
-            mapCol(setCollections, colId, (c) => {
-                const insertAfter = (folders: Folder[]): Folder[] => {
-                    const out: Folder[] = [];
-                    for (const f of folders || []) {
-                        out.push({ ...f, folders: insertAfter(f.folders) });
-                        if (f.id === folderId) out.push(newFolder);
-                    }
-                    return out;
-                };
-                return { ...c, folders: insertAfter(c.folders) };
-            });
+            await DuplicateFolder(folderId);
+            // The backend duplicates the folder + all nested subfolders + requests,
+            // but only returns the flat root folder (without its subtree). Refresh
+            // the entire collection so the sidebar shows the full duplicated subtree.
+            const c: any = await GetCollection(colId);
+            setCollections((cs) =>
+                cs.map((oc) =>
+                    oc.id === colId
+                        ? {
+                              ...c,
+                              favorite: c.is_favorite,
+                              folders: c.folders ?? [],
+                              requests: c.requests || [],
+                              expanded: true,
+                              loaded: true,
+                          }
+                        : oc,
+                ),
+            );
         } catch (err) {
             console.error('Failed to duplicate folder', err);
         }
@@ -769,6 +810,8 @@ export function useWorkspaceData() {
         [environments],
     );
 
+    const clearHistory = useCallback(() => setHistory([]), [setHistory]);
+
     return {
         workspaces,
         activeWorkspace,
@@ -789,6 +832,7 @@ export function useWorkspaceData() {
         loadCollection,
         toggleCollection,
         collapseCollection,
+        expandCollection,
         toggleFavorite,
         duplicateCollection,
         moveCollection,
@@ -798,6 +842,7 @@ export function useWorkspaceData() {
         deleteFolder,
         toggleFolder,
         collapseFolder,
+        expandFolder,
         duplicateFolder,
         // Request
         addRequest,
@@ -815,6 +860,7 @@ export function useWorkspaceData() {
         duplicateEnvironment,
         setActiveEnvironment,
         updateEnvironmentVariables,
+        clearHistory,
     };
 }
 
