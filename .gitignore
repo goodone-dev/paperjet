@@ -23,6 +23,7 @@ pkg/
 # Development files
 .env
 *.env
+.env.*
 .idea/
 .vscode/
 *.swp
@@ -55,4 +56,3 @@ credentials.json
 *.pem
 *.key
 .credentials
-.env.*
