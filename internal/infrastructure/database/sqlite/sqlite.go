@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -33,7 +34,8 @@ func open(ctx context.Context) *gorm.DB {
 		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
 	}
 
-	db, err := gorm.Open(sqlite.Open(config.DB.Name), gormConfig)
+	dsn := fmt.Sprintf("%s?_foreign_keys=on", config.DB.Name)
+	db, err := gorm.Open(sqlite.Open(dsn), gormConfig)
 	if err != nil {
 		logger.Fatal(ctx, err, "❌ SQLite failed to open database").Write()
 	}
