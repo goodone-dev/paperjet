@@ -1030,10 +1030,11 @@ const RequestRow: React.FC<RequestRowProps> = ({
                     editApi.startRename('request', req.id, col.id, folder?.id);
                 }}
                 className={cn(
-                    'group w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-sidebar-hover transition-colors text-left cursor-pointer',
+                    'group w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-left cursor-pointer',
+                    !isActive && 'hover:bg-sidebar-hover',
                     isDragging && 'opacity-50',
                     isOver && 'ring-1 ring-primary bg-primary-soft/40',
-                    isActive && 'bg-primary-soft text-primary font-medium ring-1 ring-primary/30',
+                    isActive && 'bg-primary-soft text-primary font-medium',
                 )}
             >
                 <MethodLabel method={req.method} className="w-11 shrink-0 text-left" />
@@ -1047,13 +1048,7 @@ const RequestRow: React.FC<RequestRowProps> = ({
                 ) : (
                     <span className={cn('flex-1 text-[13px] truncate', isActive ? 'text-primary' : 'text-foreground/90')}>{req.name}</span>
                 )}
-                {isActive && (
-                    <span
-                        aria-hidden
-                        className="h-1.5 w-1.5 rounded-full bg-primary shrink-0 mr-0.5"
-                        data-testid={`request-active-dot-${req.id}`}
-                    />
-                )}
+
                 {!isRenaming && <RowActions items={items} testId={`request-menu-${req.id}`} indicator={null} />}
             </div>
         </ContextWrap>
