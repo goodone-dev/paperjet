@@ -210,7 +210,7 @@ const RowActions: React.FC<RowActionsProps> = ({ items, testId, indicator }) => 
                         <MoreHorizontal className="h-3.5 w-3.5" />
                     </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()} onCloseAutoFocus={(e: any) => e.preventDefault()}>
                     {renderMenu(items, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent)}
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -221,7 +221,7 @@ const RowActions: React.FC<RowActionsProps> = ({ items, testId, indicator }) => 
 const ContextWrap: React.FC<{ items: MenuEntry[]; children: React.ReactNode }> = ({ items, children }) => (
     <ContextMenu>
         <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-        <ContextMenuContent className="w-52">
+        <ContextMenuContent className="w-52" onCloseAutoFocus={(e: any) => e.preventDefault()}>
             {renderMenu(items, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent)}
         </ContextMenuContent>
     </ContextMenu>

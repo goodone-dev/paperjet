@@ -505,18 +505,29 @@ export function useWorkspaceData() {
             // the entire collection so the sidebar shows the full duplicated subtree.
             const c: any = await GetCollection(colId);
             setCollections((cs) =>
-                cs.map((oc) =>
-                    oc.id === colId
-                        ? {
-                              ...c,
-                              favorite: c.is_favorite,
-                              folders: c.folders ?? [],
-                              requests: c.requests || [],
-                              expanded: true,
-                              loaded: true,
-                          }
-                        : oc,
-                ),
+                cs.map((oc) => {
+                    if (oc.id !== colId) return oc;
+
+                    const preserveExpanded = (newFolders: any[], oldFolders: any[]): any[] => {
+                        return newFolders.map((newF) => {
+                            const oldF = oldFolders.find((f) => f.id === newF.id);
+                            return {
+                                ...newF,
+                                expanded: oldF ? oldF.expanded : false,
+                                folders: preserveExpanded(newF.folders || [], oldF ? (oldF.folders || []) : []),
+                            };
+                        });
+                    };
+
+                    return {
+                        ...c,
+                        favorite: c.is_favorite,
+                        folders: preserveExpanded(c.folders || [], oc.folders || []),
+                        requests: c.requests || [],
+                        expanded: oc.expanded,
+                        loaded: true,
+                    };
+                }),
             );
         } catch (err) {
             console.error('Failed to duplicate folder', err);
