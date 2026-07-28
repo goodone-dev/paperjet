@@ -73,10 +73,20 @@ export default function AppWorkspace() {
         forceCloseAll,
     } = tabsApi;
 
-    // Open a collection request: fetch full data from backend then open tab
+    // Open a collection request.
+    // If the tab is already open, switch to it without calling the backend again.
+    // Otherwise fetch the full request data from the backend and open a new tab.
     const handleOpenRequest = useCallback(
         async (req: Partial<RequestTab> & Partial<RequestSummary>) => {
             if (req.id && !req.id.startsWith('req-')) {
+                // Dedup: if a tab for this source request is already open, just activate it.
+                const existingTab = tabs.find(
+                    (t) => t.type === 'request' && (t as RequestTab).sourceId === req.id,
+                );
+                if (existingTab) {
+                    setActiveTabId(existingTab.id);
+                    return;
+                }
                 try {
                     const full = await GetRequest(req.id);
                     const mapped = mapBackendRequestToTab(full, {
@@ -91,7 +101,7 @@ export default function AppWorkspace() {
             }
             openRequest(req);
         },
-        [openRequest],
+        [tabs, setActiveTabId, openRequest],
     );
 
     // Replay a history entry in a fresh tab (no sourceId so it opens standalone).

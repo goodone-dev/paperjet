@@ -159,28 +159,63 @@ export function useWorkspaceData() {
     useEffect(() => {
         if (!activeWorkspaceId) return;
 
-        ListCollections(activeWorkspaceId)
-            .then((res: any) => {
-                const colList = res || [];
-                setCollections(
-                    colList.map((c: any) => ({
+        const savedTabs = loadState<any[] | null>(`tabs_${activeWorkspaceId}`, null) || [];
+        const requiredColIds = new Set<string>();
+        savedTabs.forEach(t => {
+            if (t.type === 'request' && t.colId) {
+                requiredColIds.add(t.colId);
+            }
+        });
+
+        const collectionPromises = Array.from(requiredColIds).map(id =>
+            GetCollection(id).catch(err => {
+                console.error(`Failed to load collection ${id}:`, err);
+                return null;
+            })
+        );
+
+        Promise.all([
+            ListCollections(activeWorkspaceId).catch(err => {
+                console.error('Failed to list collections:', err);
+                return [];
+            }),
+            ListEnvironments(activeWorkspaceId).catch(err => {
+                console.error('Failed to list environments:', err);
+                return [];
+            }),
+            ...collectionPromises
+        ]).then((results) => {
+            const colList = results[0] || [];
+            const envList = results[1] || [];
+            const extraCols = results.slice(2).filter(Boolean);
+
+            setCollections(
+                colList.map((c: any) => {
+                    const fullCol: any = extraCols.find((ec: any) => ec.id === c.id);
+                    if (fullCol) {
+                        return {
+                            ...fullCol,
+                            favorite: fullCol.is_favorite,
+                            folders: fullCol.folders ?? [],
+                            requests: fullCol.requests ?? [],
+                            expanded: false,
+                            loaded: true,
+                        };
+                    }
+                    return {
                         ...c,
                         favorite: c.is_favorite,
                         folders: c.folders ?? [],
                         requests: c.requests ?? [],
                         expanded: false,
                         loaded: false,
-                    })),
-                );
-            })
-            .catch((err) => console.error('Failed to list collections:', err));
+                    };
+                }),
+            )
 
-        ListEnvironments(activeWorkspaceId)
-            .then((res: any) => {
-                const savedEnvId = loadState<string | null>(`activeEnvironmentId_${activeWorkspaceId}`, null);
-                setEnvironments((res || []).map((e: any) => ({ ...e, active: e.id === savedEnvId })));
-            })
-            .catch((err) => console.error('Failed to list environments:', err));
+            const savedEnvId = loadState<string | null>(`activeEnvironmentId_${activeWorkspaceId}`, null);
+            setEnvironments((envList || []).map((e: any) => ({ ...e, active: e.id === savedEnvId })));
+        })
     }, [activeWorkspaceId]);
 
     useEffect(() => saveState('activeWorkspaceId', activeWorkspaceId), [activeWorkspaceId]);
@@ -701,7 +736,7 @@ export function useWorkspaceData() {
     const moveRequest = useCallback((src: DragSource, dest: DropDest) => {
         setCollections((cs) => {
             let moved: RequestSummary | null = null;
-            
+
             const removeRequests = (folders: Folder[]): Folder[] => {
                 return (folders || []).map((f) => {
                     if (f.id === src.folderId) {
@@ -755,7 +790,7 @@ export function useWorkspaceData() {
     const moveFolder = useCallback((src: DragSource, dest: DropDest) => {
         setCollections((cs) => {
             let moved: Folder | null = null;
-            
+
             const removeFolders = (folders: Folder[]): Folder[] => {
                 return (folders || []).filter((f) => {
                     if (f.id === src.folderId) {
