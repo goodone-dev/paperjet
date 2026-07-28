@@ -3,7 +3,7 @@ import { useCallback, useRef } from 'react';
 // Debounces a click so that a real double-click within `delay` ms cancels the
 // pending single-click. Used to prevent single-click side effects (like expand
 // / collapse) from firing when the user is actually double-clicking to rename.
-export function useSingleClick(handler: () => void, delay = 220): (e?: unknown) => void {
+export function useSingleClick(handler: () => void, delay = 120): (e?: unknown) => void {
     const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const clickCount = useRef(0);
 
