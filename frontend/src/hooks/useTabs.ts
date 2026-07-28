@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { loadState, saveState } from '@/lib/persist';
-import type { RequestTab, Tab, EnvironmentTab } from '@/types/tab';
+import type { RequestTab, RequestTabSnapshot, Tab, EnvironmentTab } from '@/types/tab';
 import type { KeyValueRow } from '@/types/collection';
 import type { Environment } from '@/types/environment';
 
@@ -28,9 +28,28 @@ const newRequestTemplate = (overrides: Partial<RequestTab> = {}): RequestTab => 
     isSending: false,
     isDirty: false,
     activeTab: 'params',
+    pinned: overrides.pinned ?? false,
+    baseline: overrides.baseline ?? null,
 });
 
 const DEFAULT_TAB = (): RequestTab => newRequestTemplate({});
+
+// Capture the editable fields of a request so we can compare / restore later.
+function snapshot(t: RequestTab): RequestTabSnapshot {
+    return {
+        name: t.name,
+        method: t.method,
+        url: t.url,
+        params: JSON.parse(JSON.stringify(t.params || [])),
+        pathVariables: JSON.parse(JSON.stringify(t.pathVariables || [])),
+        headers: JSON.parse(JSON.stringify(t.headers || [])),
+        body: t.body,
+        bodyType: t.bodyType,
+        bodyFormData: JSON.parse(JSON.stringify(t.bodyFormData || [])),
+        bodyUrlEncoded: JSON.parse(JSON.stringify(t.bodyUrlEncoded || [])),
+        auth: JSON.parse(JSON.stringify(t.auth || { type: 'none' })),
+    };
+}
 
 interface TabState {
     workspaceId: string | null;
@@ -40,10 +59,21 @@ interface TabState {
 
 type Updater<T> = T | ((prev: T) => T);
 
+// Sort so pinned tabs always come first, preserving their relative order.
+function sortByPin(tabs: Tab[]): Tab[] {
+    const pinned: Tab[] = [];
+    const rest: Tab[] = [];
+    for (const t of tabs) {
+        if (t.type === 'request' && t.pinned) pinned.push(t);
+        else rest.push(t);
+    }
+    return [...pinned, ...rest];
+}
+
 function loadTabState(workspaceId: string | null): TabState {
     const savedTabs = loadState<Tab[] | null>(`tabs_${workspaceId}`, null);
     const savedActive = loadState<string | null>(`activeTabId_${workspaceId}`, null);
-    const initialTabs: Tab[] = Array.isArray(savedTabs) && savedTabs.length > 0 ? savedTabs : [DEFAULT_TAB()];
+    const initialTabs: Tab[] = Array.isArray(savedTabs) && savedTabs.length > 0 ? sortByPin(savedTabs) : [DEFAULT_TAB()];
     return {
         workspaceId,
         tabs: initialTabs,
@@ -101,7 +131,40 @@ export function useTabs(workspaceId: string | null) {
 
     const markClean = useCallback(
         (id: string) => {
-            setTabs((ts) => ts.map((t) => (t.id === id ? ({ ...t, isDirty: false } as Tab) : t)));
+            setTabs((ts) =>
+                ts.map((t) => {
+                    if (t.id !== id) return t;
+                    if (t.type !== 'request') return t;
+                    return { ...t, isDirty: false, baseline: snapshot(t) } as Tab;
+                }),
+            );
+        },
+        [setTabs],
+    );
+
+    // Restore the tab from its saved baseline (if any) and clear the dirty flag.
+    const discardChanges = useCallback(
+        (id: string) => {
+            setTabs((ts) =>
+                ts.map((t) => {
+                    if (t.id !== id || t.type !== 'request') return t;
+                    const base = t.baseline;
+                    if (!base) return { ...t, isDirty: false } as Tab;
+                    return { ...t, ...base, isDirty: false } as Tab;
+                }),
+            );
+        },
+        [setTabs],
+    );
+
+    const togglePin = useCallback(
+        (id: string) => {
+            setTabs((ts) => {
+                const next = ts.map((t) =>
+                    t.id === id && t.type === 'request' ? ({ ...t, pinned: !t.pinned } as Tab) : t,
+                );
+                return sortByPin(next);
+            });
         },
         [setTabs],
     );
@@ -129,6 +192,9 @@ export function useTabs(workspaceId: string | null) {
                 }
             }
             const newReq = newRequestTemplate(req);
+            // Set the baseline snapshot so "Discard changes" works from the moment
+            // the tab is opened (before any local edit).
+            newReq.baseline = snapshot(newReq);
             setTabs((ts) => [...ts, newReq]);
             setActiveTabId(newReq.id);
         },
@@ -150,6 +216,7 @@ export function useTabs(workspaceId: string | null) {
 
     const newTab = useCallback(() => {
         const t = DEFAULT_TAB();
+        t.baseline = snapshot(t);
         setTabs((ts) => [...ts, t]);
         setActiveTabId(t.id);
     }, [setActiveTabId, setTabs]);
@@ -163,11 +230,13 @@ export function useTabs(workspaceId: string | null) {
                 id: `req-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
                 response: null,
                 isSending: false,
+                pinned: false,
             };
+            copy.baseline = snapshot(copy);
             const idx = tabs.findIndex((t) => t.id === id);
             const next = [...tabs];
             next.splice(idx + 1, 0, copy);
-            setTabs(next);
+            setTabs(sortByPin(next));
             setActiveTabId(copy.id);
         },
         [tabs, setActiveTabId, setTabs],
@@ -175,14 +244,27 @@ export function useTabs(workspaceId: string | null) {
 
     const closeOthers = useCallback(
         (id: string) => {
-            setTabs((ts) => ts.filter((t) => t.id === id));
+            setTabs((ts) => ts.filter((t) => t.id === id || (t.type === 'request' && t.pinned)));
             setActiveTabId(id);
         },
         [setActiveTabId, setTabs],
     );
 
     const closeAll = useCallback(() => {
+        setTabState((prev) => {
+            const pinnedOnly = prev.tabs.filter((t) => t.type === 'request' && t.pinned);
+            if (pinnedOnly.length > 0) {
+                return { ...prev, tabs: pinnedOnly, activeTabId: pinnedOnly[0].id };
+            }
+            const fresh = DEFAULT_TAB();
+            fresh.baseline = snapshot(fresh);
+            return { ...prev, tabs: [fresh], activeTabId: fresh.id };
+        });
+    }, []);
+
+    const forceCloseAll = useCallback(() => {
         const fresh = DEFAULT_TAB();
+        fresh.baseline = snapshot(fresh);
         setTabs([fresh]);
         setActiveTabId(fresh.id);
     }, [setActiveTabId, setTabs]);
@@ -193,6 +275,7 @@ export function useTabs(workspaceId: string | null) {
             const next = tabs.filter((t) => t.id !== id);
             if (next.length === 0) {
                 const fresh = DEFAULT_TAB();
+                fresh.baseline = snapshot(fresh);
                 setTabs([fresh]);
                 setActiveTabId(fresh.id);
                 return;
@@ -213,6 +296,8 @@ export function useTabs(workspaceId: string | null) {
         setActiveTabId,
         updateTab,
         markClean,
+        discardChanges,
+        togglePin,
         openRequest,
         openEnvironmentTab,
         newTab,
@@ -220,6 +305,7 @@ export function useTabs(workspaceId: string | null) {
         closeTab,
         closeOthers,
         closeAll,
+        forceCloseAll,
     };
 }
 

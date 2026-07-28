@@ -1,6 +1,7 @@
 import type { BackendKeyValue, KeyValueRow, AuthConfig, BodyConfig } from '@/types/collection';
 import type { RequestTab } from '@/types/tab';
 import type { EnvVariable } from '@/types/environment';
+import type { HistoryEntry } from '@/types/history';
 import type { WireRequestResponse } from './api';
 import { resolveEnvVars } from './env-resolve';
 
@@ -62,6 +63,40 @@ export function mapBackendRequestToTab(full: WireRequestResponse, meta: OpenRequ
         ]),
         pathVariables: mapBackendKvsToRows(full.path_variables, 'pv', []),
         auth: mapBackendAuth(full.auth),
+        isDirty: false,
+    };
+}
+
+/**
+ * History entry (which stores backend-shaped payloads) → in-memory tab.
+ * Used to "replay" a historical request in a new tab.
+ */
+export function mapHistoryEntryToTab(entry: HistoryEntry): Partial<RequestTab> {
+    const body = (entry.body || { type: 'none' }) as any;
+    return {
+        sourceId: null,
+        colId: null,
+        folderId: null,
+        name: entry.name || entry.url,
+        method: entry.method,
+        url: entry.url,
+        params: mapBackendKvsToRows(entry.params, 'p', [
+            { id: 'p1', key: '', value: '', description: '', enabled: true },
+        ]),
+        headers: mapBackendKvsToRows(entry.headers, 'h', [
+            { id: 'h1', key: 'Accept', value: 'application/json', description: '', enabled: true },
+            { id: 'h2', key: '', value: '', description: '', enabled: true },
+        ]),
+        body: body?.raw?.value || '',
+        bodyType: body?.type || 'none',
+        bodyFormData: mapBackendKvsToRows(body?.form_data, 'f', [
+            { id: 'f1', key: '', value: '', description: '', enabled: true },
+        ]),
+        bodyUrlEncoded: mapBackendKvsToRows(body?.url_encoded, 'u', [
+            { id: 'u1', key: '', value: '', description: '', enabled: true },
+        ]),
+        pathVariables: mapBackendKvsToRows(entry.pathVariables, 'pv', []),
+        auth: mapBackendAuth(entry.auth),
         isDirty: false,
     };
 }

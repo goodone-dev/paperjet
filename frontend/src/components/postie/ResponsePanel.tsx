@@ -107,16 +107,17 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({ response, isSendin
                 <div className="px-5 border-b border-border bg-card/40 flex items-center justify-between">
                     <TabsList className="bg-transparent p-0 h-10 gap-1">
                         {[
-                            { id: 'body', label: 'Body', count: 0 },
-                            { id: 'cookies', label: 'Cookies', count: 0 },
-                            { id: 'headers', label: 'Headers', count: response.headers.length },
-                            { id: 'tests', label: 'Test Results', count: 0 },
+                            { id: 'body', label: 'Body', count: 0, disabled: false },
+                            { id: 'cookies', label: 'Cookies', count: 0, disabled: false },
+                            { id: 'headers', label: 'Headers', count: response.headers.length, disabled: false },
+                            { id: 'tests', label: 'Test Results', count: 0, disabled: true },
                         ].map((t) => (
                             <TabsTrigger
                                 key={t.id}
                                 value={t.id}
+                                disabled={t.disabled}
                                 data-testid={`response-tab-${t.id}`}
-                                className="h-10 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-[13px] font-medium text-muted-foreground hover:text-foreground"
+                                className="h-10 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-[13px] font-medium text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                                 {t.label}
                                 {t.count > 0 && (

@@ -23,6 +23,7 @@ pkg/
 # Development files
 .env
 *.env
+.env.*
 .idea/
 .vscode/
 *.swp

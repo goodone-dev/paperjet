@@ -156,6 +156,20 @@ export interface MoveCollectionPayload {
     target_workspace_id: string;
 }
 
+export interface CollectionTreeItem {
+    type: 'folder' | 'request';
+    id: string;
+    name: string;
+    method?: string;
+    sort_order?: string;
+    items?: CollectionTreeItem[];
+}
+
+export interface ReorderCollectionItemsPayload {
+    parent_folder_id?: string;
+    items: CollectionTreeItem[];
+}
+
 // ─── Typed bindings ──────────────────────────────────────────────────────
 
 // The raw `wailsjs` module is generated JavaScript; we cast it once here so
@@ -198,6 +212,13 @@ export const UpdateCollectionFavorite = (id: string, favorite: boolean): Promise
     api.UpdateCollectionFavorite(id, favorite);
 export const MoveCollection = (id: string, payload: MoveCollectionPayload): Promise<WireCollectionResponse> =>
     api.MoveCollection(id, payload);
+export const UpdateCollectionSortOrder = (id: string, name: string, sortOrder: string): Promise<WireCollectionResponse> =>
+    api.UpdateCollectionSortOrder(id, name, sortOrder);
+export const ReorderCollectionItems = (
+    id: string,
+    name: string,
+    payload: ReorderCollectionItemsPayload,
+): Promise<void> => api.ReorderCollectionItems(id, name, payload);
 
 // Folders
 export const CreateFolder = (payload: CreateFolderPayload): Promise<WireFolderResponse> => api.CreateFolder(payload);
@@ -205,6 +226,8 @@ export const RenameFolder = (id: string, payload: RenameFolderPayload): Promise<
     api.RenameFolder(id, payload);
 export const DeleteFolder = (id: string, name: string): Promise<void> => api.DeleteFolder(id, name);
 export const DuplicateFolder = (id: string): Promise<WireFolderResponse> => api.DuplicateFolder(id);
+export const UpdateFolderSortOrder = (id: string, name: string, sortOrder: string): Promise<WireFolderResponse> =>
+    api.UpdateFolderSortOrder(id, name, sortOrder);
 
 // Requests
 export const GetRequest = (id: string): Promise<WireRequestResponse> => api.GetRequest(id);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Send, Save, ChevronDown } from 'lucide-react';
+import { Send, Save, ChevronDown, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -18,10 +18,11 @@ interface RequestPanelProps {
     onUpdate: (patch: Partial<RequestTab> & { id: string }) => void;
     onSend: () => void;
     onSave: () => void;
+    onDiscard?: () => void;
     envVariables?: EnvVariable[];
 }
 
-export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, onSend, onSave, envVariables = [] }) => {
+export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, onSend, onSave, onDiscard, envVariables = [] }) => {
     const update = (patch: Partial<RequestTab>) => onUpdate({ ...request, ...patch, id: request.id });
 
     const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,6 +114,18 @@ export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, o
                             <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-warning" />
                         )}
                     </Button>
+                    {onDiscard && (
+                        <Button
+                            variant="outline"
+                            className="h-11 px-3 bg-card"
+                            onClick={onDiscard}
+                            disabled={!request.isDirty}
+                            title={request.isDirty ? 'Discard local changes' : 'No changes to discard'}
+                            data-testid="discard-changes-btn"
+                        >
+                            <Undo2 className="h-4 w-4" />
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -130,7 +143,7 @@ export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, o
                             { id: 'body', label: 'Body', count: 0 },
                             { id: 'scripts', label: 'Scripts', disabled: true, count: 0 },
                             { id: 'tests', label: 'Tests', disabled: true, count: 0 },
-                            { id: 'settings', label: 'Settings', count: 0 },
+                            { id: 'settings', label: 'Settings', disabled: true, count: 0 },
                         ].map((t) => (
                             <TabsTrigger
                                 key={t.id}

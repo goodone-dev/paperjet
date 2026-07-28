@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Folder as FolderIcon,
@@ -17,14 +17,31 @@ import {
     Star,
     Copy,
     ChevronsDownUp,
+    ChevronsUpDown,
+    Compass,
     ArrowRight,
     Code2,
     FileText,
     GitBranch,
     History,
     StarOff,
+    Repeat2,
+    ArrowUpDown,
     type LucideIcon,
+    Check,
+    ArrowDownAZ,
+    ListOrdered,
 } from 'lucide-react';
+import {
+    DndContext,
+    DragOverlay,
+    useDraggable,
+    useDroppable,
+    pointerWithin,
+} from '@dnd-kit/core';
+import { buildDragId, buildDropId, type DragData, type DropData } from '@/lib/dnd-helpers';
+import { useDragAndDrop } from '@/hooks/useDragAndDrop';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -35,6 +52,9 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubTrigger,
+    DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import {
     ContextMenu,
@@ -42,18 +62,23 @@ import {
     ContextMenuContent,
     ContextMenuItem,
     ContextMenuSeparator,
+    ContextMenuSub,
+    ContextMenuSubTrigger,
+    ContextMenuSubContent,
 } from '@/components/ui/context-menu';
 import { MethodLabel } from './MethodBadge';
 import { InlineEdit } from './InlineEdit';
 import { cn } from '@/lib/utils';
+import { useSingleClick } from '@/hooks/useSingleClick';
+import { groupHistoryByDate, historyTimeLabel, prune7Days } from '@/lib/history-format';
 import type { Collection, Folder, RequestSummary } from '@/types/collection';
 import type { Environment } from '@/types/environment';
 import type { DragSource, DropDest } from '@/types/dnd';
 import type { RequestTab } from '@/types/tab';
+import type { HistoryEntry } from '@/types/history';
 import type { ConfirmDialogConfig } from './CrudDialogs';
 
-// Typed subset of useWorkspaceData that the Sidebar consumes — fixes Finding #11
-// (previously the entire `data` bag was drilled 4 levels deep).
+// Typed subset of useWorkspaceData that the Sidebar consumes.
 export interface SidebarActions {
     collections: Collection[];
     environments: Environment[];
@@ -63,6 +88,7 @@ export interface SidebarActions {
     deleteCollection: (id: string) => void | Promise<void>;
     toggleCollection: (id: string) => void | Promise<void>;
     collapseCollection: (id: string) => void;
+    expandCollection: (id: string) => void | Promise<void>;
     toggleFavorite: (id: string) => void | Promise<void>;
     duplicateCollection: (id: string) => void | Promise<void>;
     addFolder: (colId: string, name: string, parentFolderId?: string) => void | Promise<void>;
@@ -70,6 +96,7 @@ export interface SidebarActions {
     deleteFolder: (colId: string, folderId: string) => void | Promise<void>;
     toggleFolder: (colId: string, folderId: string) => void;
     collapseFolder: (colId: string, folderId: string) => void;
+    expandFolder: (colId: string, folderId: string) => void;
     duplicateFolder: (colId: string, folderId: string) => void | Promise<void>;
     addRequest: (colId: string, folderId: string | null, req: RequestTab | { name: string } | string) => Promise<{ id: string } | null> | void;
     renameRequest: (colId: string, folderId: string | null, reqId: string, name: string) => void | Promise<void>;
@@ -82,13 +109,9 @@ export interface SidebarActions {
     deleteEnvironment: (id: string) => void | Promise<void>;
     duplicateEnvironment: (id: string) => void | Promise<void>;
     setActiveEnvironment: (id: string | null) => void;
-}
-
-interface HistoryEntry {
-    id: string;
-    method: string;
-    url: string;
-    time: string;
+    clearHistory: () => void;
+    updateCollectionSortOrder: (colId: string, sortOrder: string) => void | Promise<void>;
+    updateFolderSortOrder: (colId: string, folderId: string, sortOrder: string) => void | Promise<void>;
 }
 
 const COLLAPSE_ANIM = {
@@ -121,6 +144,7 @@ interface MenuActionItem {
     onClick: () => void;
     danger?: boolean;
     separator?: false;
+    submenu?: MenuEntry[];
 }
 interface MenuSeparator {
     separator: true;
@@ -128,25 +152,45 @@ interface MenuSeparator {
 }
 type MenuEntry = MenuActionItem | MenuSeparator;
 
-const renderMenu = (items: MenuEntry[], Item: any, Sep: any) =>
-    items.filter(Boolean).map((it, i) =>
-        'separator' in it && it.separator ? (
-            <Sep key={`sep-${i}`} />
-        ) : (
+const renderMenu = (
+    items: MenuEntry[],
+    Item: any,
+    Sep: any,
+    Sub: any,
+    SubTrig: any,
+    SubContent: any,
+) =>
+    items.filter(Boolean).map((it, i) => {
+        if ('separator' in it && it.separator) return <Sep key={`sep-${i}`} />;
+        const a = it as MenuActionItem;
+        if (a.submenu && a.submenu.length > 0) {
+            return (
+                <Sub key={a.label}>
+                    <SubTrig
+                        data-testid={a.testId}
+                        className={cn('text-[13px] gap-2 cursor-pointer', a.danger && 'text-destructive focus:text-destructive')}
+                    >
+                        {a.icon && React.createElement(a.icon as LucideIcon, { className: 'h-3.5 w-3.5' })}
+                        {a.label}
+                    </SubTrig>
+                    <SubContent className="w-52">
+                        {renderMenu(a.submenu, Item, Sep, Sub, SubTrig, SubContent)}
+                    </SubContent>
+                </Sub>
+            );
+        }
+        return (
             <Item
-                key={(it as MenuActionItem).label}
-                data-testid={(it as MenuActionItem).testId}
-                onSelect={() => (it as MenuActionItem).onClick()}
-                className={cn(
-                    'text-[13px] gap-2 cursor-pointer',
-                    (it as MenuActionItem).danger && 'text-destructive focus:text-destructive',
-                )}
+                key={a.label}
+                data-testid={a.testId}
+                onSelect={() => a.onClick()}
+                className={cn('text-[13px] gap-2 cursor-pointer', a.danger && 'text-destructive focus:text-destructive')}
             >
-                {(it as MenuActionItem).icon && React.createElement((it as MenuActionItem).icon as LucideIcon, { className: 'h-3.5 w-3.5' })}
-                {(it as MenuActionItem).label}
+                {a.icon && React.createElement(a.icon as LucideIcon, { className: 'h-3.5 w-3.5' })}
+                {a.label}
             </Item>
-        ),
-    );
+        );
+    });
 
 interface RowActionsProps {
     items: MenuEntry[];
@@ -173,8 +217,8 @@ const RowActions: React.FC<RowActionsProps> = ({ items, testId, indicator }) => 
                         <MoreHorizontal className="h-3.5 w-3.5" />
                     </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
-                    {renderMenu(items, DropdownMenuItem, DropdownMenuSeparator)}
+                <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()} onCloseAutoFocus={(e: any) => e.preventDefault()}>
+                    {renderMenu(items, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent)}
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
@@ -184,7 +228,9 @@ const RowActions: React.FC<RowActionsProps> = ({ items, testId, indicator }) => 
 const ContextWrap: React.FC<{ items: MenuEntry[]; children: React.ReactNode }> = ({ items, children }) => (
     <ContextMenu>
         <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-        <ContextMenuContent className="w-52">{renderMenu(items, ContextMenuItem, ContextMenuSeparator)}</ContextMenuContent>
+        <ContextMenuContent className="w-52" onCloseAutoFocus={(e: any) => e.preventDefault()}>
+            {renderMenu(items, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent)}
+        </ContextMenuContent>
     </ContextMenu>
 );
 
@@ -205,36 +251,80 @@ interface EditApi {
     submitRename: (name: string) => void;
 }
 
-interface DndApi {
-    start: (payload: DragSource) => (e: React.DragEvent) => void;
-    over: (e: React.DragEvent) => void;
-    dropOnFolder: (colId: string, folderId: string) => (e: React.DragEvent) => void;
-    dropOnRequest: (colId: string, folderId: string | undefined, reqId: string) => (e: React.DragEvent) => void;
-    dropOnCollection: (col: Collection) => (e: React.DragEvent) => void;
-}
-
 interface SidebarProps {
     actions: SidebarActions;
     onOpenRequest: (req: Partial<RequestTab> & Partial<RequestSummary>) => void;
+    onReplayHistory: (entry: HistoryEntry) => void;
     onOpenEnvironment: (env: Environment) => void;
     onMove: (col: Collection) => void;
     activeView: string;
     setActiveView: (v: string) => void;
     openConfirm: (config: ConfirmDialogConfig) => void;
+    // Source id of the currently-active request tab (used to highlight the sidebar row).
+    activeRequestSourceId: string | null;
 }
+
+// DragData and DropData types + ID builders live in @/lib/dnd-helpers.
+
+interface DropZoneSpacerProps {
+    dropData: DropData;
+    activeDragId: string | null;
+    overDropId: string | null;
+    className?: string;
+}
+const DropZoneSpacer: React.FC<DropZoneSpacerProps> = ({ dropData, activeDragId, overDropId, className }) => {
+    const myDropId = buildDropId(dropData);
+    const { setNodeRef } = useDroppable({ id: myDropId, data: dropData });
+    const isOver = overDropId === myDropId && activeDragId !== null;
+    return (
+        <div ref={setNodeRef} className={className || "py-0.5 w-full flex items-center justify-center"}>
+            <div className={cn("h-0.5 rounded-full w-[calc(100%-1rem)] transition-all", isOver ? "bg-primary" : "bg-transparent")} />
+        </div>
+    );
+};
+
+// ─── Drag overlay ghost components ───────────────────────────────────────────
+
+const FolderDragGhost: React.FC<{ folderId: string; collections: Collection[] }> = ({ folderId, collections }) => {
+    const name = collections.flatMap((c) => c.folders ?? []).find((f) => f.id === folderId)?.name ?? 'Folder';
+    return (
+        <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-card border border-primary/30 shadow-lg shadow-black/20 opacity-95 text-[13px] min-w-[140px]">
+            <FolderIcon className="h-3.5 w-3.5 text-primary shrink-0" strokeWidth={2} />
+            <span className="truncate text-foreground">{name}</span>
+        </div>
+    );
+};
+
+const RequestDragGhost: React.FC<{ reqId: string; collections: Collection[] }> = ({ reqId, collections }) => {
+    const req = collections
+        .flatMap((c) => [
+            ...(c.requests ?? []),
+            ...(c.folders ?? []).flatMap((f) => f.requests ?? []),
+        ])
+        .find((r) => r.id === reqId);
+
+    if (!req) return null;
+    return (
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-card border border-primary/30 shadow-lg shadow-black/20 opacity-95 min-w-[160px]">
+            <MethodLabel method={req.method} className="w-11 shrink-0 text-left" />
+            <span className="text-[13px] truncate text-foreground/90">{req.name}</span>
+        </div>
+    );
+};
 
 export const Sidebar: React.FC<SidebarProps> = ({
     actions,
     onOpenRequest,
+    onReplayHistory,
     onOpenEnvironment,
     onMove,
     activeView,
     setActiveView,
     openConfirm,
+    activeRequestSourceId,
 }) => {
     const [search, setSearch] = useState('');
     const [edit, setEdit] = useState<EditState | null>(null);
-    const dragRef = useRef<DragSource | null>(null);
 
     const startCreate: EditApi['startCreate'] = (kind, colId, folderId) =>
         setEdit({ mode: 'create', kind, colId, folderId });
@@ -263,13 +353,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
 
     const editApi: EditApi = { edit, startCreate, startRename, clearEdit, submitCreate, submitRename };
-    const dnd = makeDnd(dragRef, actions);
 
     const handleHeaderAdd = () => {
         if (activeView === 'collections') startCreate('collection');
         else if (activeView === 'environments') startCreate('environment');
     };
     const showAdd = activeView === 'collections' || activeView === 'environments';
+    const searchPlaceholder = activeView === 'history' ? 'Search history…' : 'Filter';
+
+    // ── dnd-kit setup ────────────────────────────────────────────────────
+    const {
+        sensors,
+        activeDrag,
+        activeDragId,
+        overDropId,
+        onDragStart,
+        onDragOver,
+        onDragEnd,
+    } = useDragAndDrop(actions.collections, actions);
 
     return (
         <div className="h-full flex bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
@@ -330,7 +431,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             data-testid="sidebar-filter-input"
                             value={search}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                            placeholder="Filter"
+                            placeholder={searchPlaceholder}
                             className="h-8 pl-8 text-xs bg-card border-sidebar-border w-full"
                         />
                     </div>
@@ -339,17 +440,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <ScrollArea className="flex-1">
                     <div className="p-2">
                         {activeView === 'collections' && (
-                            <CollectionsView
-                                actions={actions}
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={pointerWithin}
+                                onDragStart={onDragStart}
+                                onDragOver={onDragOver}
+                                onDragEnd={onDragEnd}
+                            >
+                                <CollectionsView
+                                    actions={actions}
+                                    search={search}
+                                    onOpenRequest={onOpenRequest}
+                                    onMove={onMove}
+                                    editApi={editApi}
+                                    openConfirm={openConfirm}
+                                    activeRequestSourceId={activeRequestSourceId}
+                                    activeDragId={activeDragId}
+                                    overDropId={overDropId}
+                                />
+                                {/* Floating ghost that follows the cursor */}
+                                <DragOverlay dropAnimation={null}>
+                                    {activeDrag?.kind === 'folder' && (
+                                        <FolderDragGhost folderId={activeDrag.folderId} collections={actions.collections} />
+                                    )}
+                                    {activeDrag?.kind === 'request' && (
+                                        <RequestDragGhost reqId={activeDrag.reqId} collections={actions.collections} />
+                                    )}
+                                </DragOverlay>
+                            </DndContext>
+                        )}
+                        {activeView === 'history' && (
+                            <HistoryView
+                                history={actions.history}
                                 search={search}
-                                onOpenRequest={onOpenRequest}
-                                onMove={onMove}
-                                editApi={editApi}
-                                dnd={dnd}
-                                openConfirm={openConfirm}
+                                onReplay={onReplayHistory}
+                                onClear={actions.clearHistory}
                             />
                         )}
-                        {activeView === 'history' && <HistoryView history={actions.history} onOpenRequest={onOpenRequest} />}
                         {activeView === 'environments' && (
                             <EnvironmentsView
                                 actions={actions}
@@ -366,88 +493,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
 };
 
-function makeDnd(dragRef: React.MutableRefObject<DragSource | null>, actions: SidebarActions): DndApi {
-    const start = (payload: DragSource) => (e: React.DragEvent) => {
-        dragRef.current = payload;
-        if (e.dataTransfer) {
-            e.dataTransfer.effectAllowed = 'move';
-            try {
-                e.dataTransfer.setData('text/plain', payload.kind);
-            } catch (err) {
-                // Some browsers throw on `setData` when a drag isn't fully initialised.
-                // The drag itself continues via `dragRef.current`, so this is safe to log & swallow.
-                console.debug('[dnd] setData failed', err);
-            }
-        }
-        e.stopPropagation();
-    };
-    const over = (e: React.DragEvent) => {
-        e.preventDefault();
-        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-    };
-    const dropOnFolder = (colId: string, folderId: string) => (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const d = dragRef.current;
-        if (!d) return;
-        if (d.kind === 'request') actions.moveRequest({ kind: 'request', colId: d.colId, folderId: d.folderId, reqId: d.reqId }, { colId, folderId });
-        else if (d.kind === 'folder' && d.folderId !== folderId) actions.moveFolder({ kind: 'folder', colId: d.colId, folderId: d.folderId }, { colId, beforeFolderId: folderId });
-        dragRef.current = null;
-    };
-    const dropOnRequest = (colId: string, folderId: string | undefined, reqId: string) => (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const d = dragRef.current;
-        if (!d || d.kind !== 'request' || d.reqId === reqId) return;
-        actions.moveRequest(
-            { kind: 'request', colId: d.colId, folderId: d.folderId, reqId: d.reqId },
-            { colId, folderId, beforeReqId: reqId },
-        );
-        dragRef.current = null;
-    };
-    const dropOnCollection = (col: Collection) => (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const d = dragRef.current;
-        if (!d) return;
-        if (d.kind === 'folder' && d.colId !== col.id)
-            actions.moveFolder({ kind: 'folder', colId: d.colId, folderId: d.folderId }, { colId: col.id });
-        else if (d.kind === 'request' && col.folders[0])
-            actions.moveRequest(
-                { kind: 'request', colId: d.colId, folderId: d.folderId, reqId: d.reqId },
-                { colId: col.id, folderId: col.folders[0].id },
-            );
-        dragRef.current = null;
-    };
-    return { start, over, dropOnFolder, dropOnRequest, dropOnCollection };
-}
-
 interface CollectionsViewProps {
     actions: SidebarActions;
     search: string;
     onOpenRequest: SidebarProps['onOpenRequest'];
     onMove: SidebarProps['onMove'];
     editApi: EditApi;
-    dnd: DndApi;
     openConfirm: SidebarProps['openConfirm'];
+    activeRequestSourceId: string | null;
+    activeDragId: string | null;
+    overDropId: string | null;
 }
 
-const CollectionsView: React.FC<CollectionsViewProps> = ({ actions, search, onOpenRequest, onMove, editApi, dnd, openConfirm }) => {
+const CollectionsView: React.FC<CollectionsViewProps> = ({
+    actions,
+    search,
+    onOpenRequest,
+    onMove,
+    editApi,
+    openConfirm,
+    activeRequestSourceId,
+    activeDragId,
+    overDropId,
+}) => {
     const q = search.toLowerCase();
+    const filterFolders = (folders: Folder[]): Folder[] =>
+        (folders || []).map((f) => ({
+            ...f,
+            folders: filterFolders(f.folders || []),
+            requests: (f.requests || []).filter((r) => r.name.toLowerCase().includes(q)),
+        }));
     const filtered = actions.collections
         .map((c) => ({
             ...c,
-            folders: (c.folders || []).map((f) => ({
-                ...f,
-                requests: (f.requests || []).filter((r) => r.name.toLowerCase().includes(q)),
-            })),
+            folders: filterFolders(c.folders || []),
             requests: (c.requests || []).filter((r) => r.name.toLowerCase().includes(q)),
         }))
         .filter(
             (c) =>
                 !search ||
                 c.name.toLowerCase().includes(q) ||
-                (c.folders || []).some((f) => f.requests.length > 0) ||
+                (c.folders || []).some((f) => (f.requests || []).length > 0 || (f.folders || []).length > 0) ||
                 (c.requests || []).length > 0,
         )
         .sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
@@ -480,13 +566,23 @@ const CollectionsView: React.FC<CollectionsViewProps> = ({ actions, search, onOp
                     onOpenRequest={onOpenRequest}
                     onMove={onMove}
                     editApi={editApi}
-                    dnd={dnd}
                     openConfirm={openConfirm}
+                    activeRequestSourceId={activeRequestSourceId}
+                    activeDragId={activeDragId}
+                    overDropId={overDropId}
                 />
             ))}
         </div>
     );
 };
+
+// Explore submenu shared by both Collection and Folder rows.
+function exploreSubmenu(onCollapse: () => void, onExpand: () => void, id: string): MenuEntry[] {
+    return [
+        { label: 'Collapse Folders', icon: ChevronsDownUp, testId: `${id}-collapse`, onClick: onCollapse },
+        { label: 'Expand Folders', icon: ChevronsUpDown, testId: `${id}-expand`, onClick: onExpand },
+    ];
+}
 
 interface CollectionRowProps {
     col: Collection;
@@ -494,11 +590,23 @@ interface CollectionRowProps {
     onOpenRequest: SidebarProps['onOpenRequest'];
     onMove: SidebarProps['onMove'];
     editApi: EditApi;
-    dnd: DndApi;
     openConfirm: SidebarProps['openConfirm'];
+    activeRequestSourceId: string | null;
+    activeDragId: string | null;
+    overDropId: string | null;
 }
 
-const CollectionRow: React.FC<CollectionRowProps> = ({ col, actions, onOpenRequest, onMove, editApi, dnd, openConfirm }) => {
+const CollectionRow: React.FC<CollectionRowProps> = ({
+    col,
+    actions,
+    onOpenRequest,
+    onMove,
+    editApi,
+    openConfirm,
+    activeRequestSourceId,
+    activeDragId,
+    overDropId,
+}) => {
     const { edit } = editApi;
     const isRenaming = edit?.mode === 'rename' && edit.kind === 'collection' && edit.id === col.id;
 
@@ -527,7 +635,30 @@ const CollectionRow: React.FC<CollectionRowProps> = ({ col, actions, onOpenReque
                 editApi.startCreate('folder', col.id);
             },
         },
-        { label: 'Collapse Folders', icon: ChevronsDownUp, testId: `collection-collapse-${col.id}`, onClick: () => actions.collapseCollection(col.id) },
+        { separator: true },
+        {
+            label: 'Explore',
+            icon: Compass,
+            testId: `collection-explore-${col.id}`,
+            onClick: () => {
+                // Parent action; submenu carries the real intent.
+            },
+            submenu: exploreSubmenu(
+                () => actions.collapseCollection(col.id),
+                () => actions.expandCollection(col.id),
+                `collection-${col.id}`,
+            ),
+        },
+        {
+            label: 'Sort',
+            icon: ArrowUpDown,
+            testId: `collection-sort-${col.id}`,
+            onClick: () => { },
+            submenu: [
+                { label: 'Default', icon: col.sort_order == 'default' ? Check : ListOrdered, onClick: () => actions.updateCollectionSortOrder(col.id, 'default') },
+                { label: 'A to Z', icon: col.sort_order == 'alpha' ? Check : ArrowDownAZ, onClick: () => actions.updateCollectionSortOrder(col.id, 'alpha') },
+            ],
+        },
         { separator: true },
         { label: 'Rename', icon: Pencil, testId: `collection-rename-${col.id}`, onClick: () => editApi.startRename('collection', col.id) },
         { label: 'Duplicate', icon: Copy, testId: `collection-duplicate-${col.id}`, onClick: () => actions.duplicateCollection(col.id) },
@@ -550,18 +681,23 @@ const CollectionRow: React.FC<CollectionRowProps> = ({ col, actions, onOpenReque
     const creatingFolder = edit?.mode === 'create' && edit.kind === 'folder' && edit.colId === col.id;
     const creatingReqHere = edit?.mode === 'create' && edit.kind === 'request' && edit.colId === col.id && !edit.folderId;
 
+    // Drop target for the whole collection (accepts folders / stray requests).
+    const dropData: DropData = { kind: 'collection', colId: col.id };
+    const { isOver, setNodeRef } = useDroppable({ id: buildDropId(dropData), data: dropData });
+
+    const handleClick = useSingleClick(() => actions.toggleCollection(col.id));
+
     return (
-        <div>
+        <div ref={setNodeRef} className={cn(isOver && 'ring-1 ring-inset ring-primary/60 rounded-md')}>
             <ContextWrap items={items}>
                 <div
                     className="group w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-sidebar-hover transition-colors cursor-pointer"
-                    onClick={() => !isRenaming && actions.toggleCollection(col.id)}
+                    onClick={() => !isRenaming && handleClick()}
                     onDoubleClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         editApi.startRename('collection', col.id);
                     }}
-                    onDragOver={dnd.over}
-                    onDrop={dnd.dropOnCollection(col)}
                     data-testid={`collection-toggle-${col.id}`}
                 >
                     <ChevronRight className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0', col.expanded && 'rotate-90')} />
@@ -602,11 +738,14 @@ const CollectionRow: React.FC<CollectionRowProps> = ({ col, actions, onOpenReque
                                     key={folder.id}
                                     col={col}
                                     folder={folder}
+                                    parentFolderId={null}
                                     actions={actions}
                                     onOpenRequest={onOpenRequest}
                                     editApi={editApi}
-                                    dnd={dnd}
                                     openConfirm={openConfirm}
+                                    activeRequestSourceId={activeRequestSourceId}
+                                    activeDragId={activeDragId}
+                                    overDropId={overDropId}
                                 />
                             ))}
                             {(col.requests || []).map((req) => (
@@ -618,8 +757,10 @@ const CollectionRow: React.FC<CollectionRowProps> = ({ col, actions, onOpenReque
                                     actions={actions}
                                     onOpenRequest={onOpenRequest}
                                     editApi={editApi}
-                                    dnd={dnd}
                                     openConfirm={openConfirm}
+                                    isActive={req.id === activeRequestSourceId}
+                                    activeDragId={activeDragId}
+                                    overDropId={overDropId}
                                 />
                             ))}
                             {creatingReqHere && (
@@ -644,6 +785,11 @@ const CollectionRow: React.FC<CollectionRowProps> = ({ col, actions, onOpenReque
                                     />
                                 </div>
                             )}
+                            <DropZoneSpacer
+                                dropData={{ kind: 'collection_end', colId: col.id }}
+                                activeDragId={activeDragId}
+                                overDropId={overDropId}
+                            />
                         </div>
                     </motion.div>
                 )}
@@ -655,14 +801,28 @@ const CollectionRow: React.FC<CollectionRowProps> = ({ col, actions, onOpenReque
 interface FolderRowProps {
     col: Collection;
     folder: Folder;
+    parentFolderId: string | null;
     actions: SidebarActions;
     onOpenRequest: SidebarProps['onOpenRequest'];
     editApi: EditApi;
-    dnd: DndApi;
     openConfirm: SidebarProps['openConfirm'];
+    activeRequestSourceId: string | null;
+    activeDragId: string | null;
+    overDropId: string | null;
 }
 
-const FolderRow: React.FC<FolderRowProps> = ({ col, folder, actions, onOpenRequest, editApi, dnd, openConfirm }) => {
+const FolderRow: React.FC<FolderRowProps> = ({
+    col,
+    folder,
+    parentFolderId,
+    actions,
+    onOpenRequest,
+    editApi,
+    openConfirm,
+    activeRequestSourceId,
+    activeDragId,
+    overDropId,
+}) => {
     const { edit } = editApi;
     const isRenaming = edit?.mode === 'rename' && edit.kind === 'folder' && edit.id === folder.id;
     const creatingReq = edit?.mode === 'create' && edit.kind === 'request' && edit.folderId === folder.id;
@@ -687,11 +847,29 @@ const FolderRow: React.FC<FolderRowProps> = ({ col, folder, actions, onOpenReque
                 editApi.startCreate('subfolder', col.id, folder.id);
             },
         },
+        { separator: true },
         {
-            label: 'Collapse Folders',
-            icon: ChevronsDownUp,
-            testId: `folder-collapse-${folder.id}`,
-            onClick: () => actions.collapseFolder(col.id, folder.id),
+            label: 'Explore',
+            icon: Compass,
+            testId: `folder-explore-${folder.id}`,
+            onClick: () => {
+                // Parent action; submenu handles the real work.
+            },
+            submenu: exploreSubmenu(
+                () => actions.collapseFolder(col.id, folder.id),
+                () => actions.expandFolder(col.id, folder.id),
+                `folder-${folder.id}`,
+            ),
+        },
+        {
+            label: 'Sort',
+            icon: ArrowUpDown,
+            testId: `folder-sort-${folder.id}`,
+            onClick: () => { },
+            submenu: [
+                { label: 'Default', icon: folder.sort_order == 'default' ? Check : ListOrdered, onClick: () => actions.updateFolderSortOrder(col.id, folder.id, 'default') },
+                { label: 'A to Z', icon: folder.sort_order == 'alpha' ? Check : ArrowDownAZ, onClick: () => actions.updateFolderSortOrder(col.id, folder.id, 'alpha') },
+            ],
         },
         { separator: true },
         {
@@ -721,18 +899,51 @@ const FolderRow: React.FC<FolderRowProps> = ({ col, folder, actions, onOpenReque
         },
     ];
 
+    // dnd-kit — draggable & droppable
+    const dragData: DragData = { kind: 'folder', colId: col.id, folderId: folder.id };
+    const myDragId = buildDragId(dragData);
+    const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+        id: myDragId,
+        data: dragData,
+        disabled: isRenaming,
+    });
+    const dropData: DropData = { kind: 'folder', colId: col.id, folderId: folder.id };
+    const myDropId = buildDropId(dropData);
+    const { setNodeRef: setDropRef } = useDroppable({ id: myDropId, data: dropData });
+
+    const setRef = (el: HTMLDivElement | null) => {
+        setDragRef(el);
+        setDropRef(el);
+    };
+
+    const handleClick = useSingleClick(() => actions.toggleFolder(col.id, folder.id));
+
+    // Container highlight: show when a REQUEST or FOLDER is dragged over this folder (it will be dropped inside).
+    const isDropContainer = overDropId === myDropId && activeDragId !== myDragId && (activeDragId?.startsWith('drag:req:') || activeDragId?.startsWith('drag:folder:'));
+
     return (
-        <div>
+        <div className="relative">
+            {/* DropZoneSpacer acts as the "insert before" drop target for folders */}
+            <DropZoneSpacer
+                dropData={{ kind: 'folder_before', colId: col.id, folderId: folder.id, parentFolderId }}
+                activeDragId={activeDragId}
+                overDropId={overDropId}
+                className="absolute -top-1 left-0 right-0 h-2 z-10 flex items-center justify-center"
+            />
             <ContextWrap items={items}>
                 <div
-                    className="group w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-sidebar-hover transition-colors cursor-pointer"
-                    draggable={!isRenaming}
-                    onDragStart={dnd.start({ kind: 'folder', colId: col.id, folderId: folder.id })}
-                    onDragOver={dnd.over}
-                    onDrop={dnd.dropOnFolder(col.id, folder.id)}
-                    onClick={() => !isRenaming && actions.toggleFolder(col.id, folder.id)}
+                    ref={setRef}
+                    {...attributes}
+                    {...listeners}
+                    className={cn(
+                        'group w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-sidebar-hover transition-colors cursor-pointer',
+                        isDragging && 'opacity-0 pointer-events-none',
+                        isDropContainer && 'ring-1 ring-inset ring-primary bg-primary-soft/40'
+                    )}
+                    onClick={() => !isRenaming && handleClick()}
                     onDoubleClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         editApi.startRename('folder', folder.id, col.id);
                     }}
                     data-testid={`folder-toggle-${folder.id}`}
@@ -774,11 +985,14 @@ const FolderRow: React.FC<FolderRowProps> = ({ col, folder, actions, onOpenReque
                                 key={subFolder.id}
                                 col={col}
                                 folder={subFolder}
+                                parentFolderId={folder.id}
                                 actions={actions}
                                 onOpenRequest={onOpenRequest}
                                 editApi={editApi}
-                                dnd={dnd}
                                 openConfirm={openConfirm}
+                                activeRequestSourceId={activeRequestSourceId}
+                                activeDragId={activeDragId}
+                                overDropId={overDropId}
                             />
                         ))}
                         {(folder.requests || []).map((req) => (
@@ -790,8 +1004,10 @@ const FolderRow: React.FC<FolderRowProps> = ({ col, folder, actions, onOpenReque
                                 actions={actions}
                                 onOpenRequest={onOpenRequest}
                                 editApi={editApi}
-                                dnd={dnd}
                                 openConfirm={openConfirm}
+                                isActive={req.id === activeRequestSourceId}
+                                activeDragId={activeDragId}
+                                overDropId={overDropId}
                             />
                         ))}
                         {creatingSubFolder && (
@@ -815,6 +1031,11 @@ const FolderRow: React.FC<FolderRowProps> = ({ col, folder, actions, onOpenReque
                                 />
                             </div>
                         )}
+                        <DropZoneSpacer
+                            dropData={{ kind: 'folder_end', colId: col.id, folderId: folder.id }}
+                            activeDragId={activeDragId}
+                            overDropId={overDropId}
+                        />
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -829,11 +1050,24 @@ interface RequestRowProps {
     actions: SidebarActions;
     onOpenRequest: SidebarProps['onOpenRequest'];
     editApi: EditApi;
-    dnd: DndApi;
     openConfirm: SidebarProps['openConfirm'];
+    isActive: boolean;
+    activeDragId: string | null;
+    overDropId: string | null;
 }
 
-const RequestRow: React.FC<RequestRowProps> = ({ col, folder, req, actions, onOpenRequest, editApi, dnd, openConfirm }) => {
+const RequestRow: React.FC<RequestRowProps> = ({
+    col,
+    folder,
+    req,
+    actions,
+    onOpenRequest,
+    editApi,
+    openConfirm,
+    isActive,
+    activeDragId,
+    overDropId,
+}) => {
     const { edit } = editApi;
     const isRenaming = edit?.mode === 'rename' && edit.kind === 'request' && edit.id === req.id;
     const items: MenuEntry[] = [
@@ -864,61 +1098,155 @@ const RequestRow: React.FC<RequestRowProps> = ({ col, folder, req, actions, onOp
         },
     ];
 
+    const dragData: DragData = { kind: 'request', colId: col.id, folderId: folder?.id, reqId: req.id };
+    const myDragId = buildDragId(dragData);
+    const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+        id: myDragId,
+        data: dragData,
+        disabled: isRenaming,
+    });
+    const dropData: DropData = { kind: 'request', colId: col.id, folderId: folder?.id, reqId: req.id };
+    const myDropId = buildDropId(dropData);
+    const { setNodeRef: setDropRef } = useDroppable({ id: myDropId, data: dropData });
+
+    const setRef = (el: HTMLDivElement | null) => {
+        setDragRef(el);
+        setDropRef(el);
+    };
+
+    // Insertion-line indicator: show above this request when it's the current drop target.
+    const isInsertTarget = overDropId === myDropId && activeDragId !== myDragId;
+
     return (
-        <ContextWrap items={items}>
-            <div
-                data-testid={`request-item-${req.id}`}
-                draggable={!isRenaming}
-                onDragStart={dnd.start({ kind: 'request', colId: col.id, folderId: folder?.id, reqId: req.id })}
-                onDragOver={dnd.over}
-                onDrop={dnd.dropOnRequest(col.id, folder?.id, req.id)}
-                onClick={() => !isRenaming && onOpenRequest({ ...req, colId: col.id, folderId: folder?.id ?? null })}
-                onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    editApi.startRename('request', req.id, col.id, folder?.id);
-                }}
-                className="group w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-sidebar-hover transition-colors text-left cursor-pointer"
-            >
-                <MethodLabel method={req.method} className="w-11 shrink-0 text-left" />
-                {isRenaming ? (
-                    <InlineEdit
-                        defaultValue={req.name}
-                        className="text-[13px] text-foreground/90"
-                        onSubmit={editApi.submitRename}
-                        onCancel={editApi.clearEdit}
-                    />
-                ) : (
-                    <span className="flex-1 text-[13px] truncate text-foreground/90">{req.name}</span>
-                )}
-                {!isRenaming && <RowActions items={items} testId={`request-menu-${req.id}`} indicator={null} />}
-            </div>
-        </ContextWrap>
+        <>
+            {/* Insertion line above — outside ContextWrap so trigger has exactly one child */}
+            {isInsertTarget && (
+                <div className="mx-2 h-0.5 rounded-full bg-primary transition-all" />
+            )}
+            <ContextWrap items={items}>
+                <div
+                    ref={setRef}
+                    {...attributes}
+                    {...listeners}
+                    data-testid={`request-item-${req.id}`}
+                    data-active={isActive ? 'true' : undefined}
+                    onClick={() => !isRenaming && onOpenRequest({ ...req, colId: col.id, folderId: folder?.id ?? null })}
+                    onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        editApi.startRename('request', req.id, col.id, folder?.id);
+                    }}
+                    className={cn(
+                        'group w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-left cursor-pointer',
+                        !isActive && 'hover:bg-sidebar-hover',
+                        isDragging && 'opacity-0 pointer-events-none',
+                        isActive && 'bg-primary-soft text-primary font-medium',
+                    )}
+                >
+                    <MethodLabel method={req.method} className="w-11 shrink-0 text-left" />
+                    {isRenaming ? (
+                        <InlineEdit
+                            defaultValue={req.name}
+                            className="text-[13px] text-foreground/90"
+                            onSubmit={editApi.submitRename}
+                            onCancel={editApi.clearEdit}
+                        />
+                    ) : (
+                        <span className={cn('flex-1 text-[13px] truncate', isActive ? 'text-primary' : 'text-foreground/90')}>{req.name}</span>
+                    )}
+
+                    {!isRenaming && <RowActions items={items} testId={`request-menu-${req.id}`} indicator={null} />}
+                </div>
+            </ContextWrap>
+        </>
     );
 };
 
 interface HistoryViewProps {
     history: HistoryEntry[];
-    onOpenRequest: SidebarProps['onOpenRequest'];
+    search: string;
+    onReplay: (entry: HistoryEntry) => void;
+    onClear: () => void;
 }
 
-const HistoryView: React.FC<HistoryViewProps> = ({ history, onOpenRequest }) => (
-    <div className="space-y-0.5">
-        <div className="px-2 py-1.5 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Today</div>
-        {history.map((h) => (
-            <button
-                key={h.id}
-                onClick={() => onOpenRequest({ name: h.url.split('/').pop() || h.url, method: h.method, url: h.url })}
-                className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-sidebar-hover transition-colors text-left"
-            >
-                <MethodLabel method={h.method} className="w-11 shrink-0" />
-                <div className="flex-1 min-w-0">
-                    <div className="text-[13px] truncate">{h.url}</div>
-                    <div className="text-[11px] text-muted-foreground">{h.time}</div>
+const HistoryView: React.FC<HistoryViewProps> = ({ history, search, onReplay, onClear }) => {
+    // Prune older-than-7-days entries at render time so the view is always fresh
+    // even if the persisted array happens to contain stale rows.
+    const filtered = useMemo(() => {
+        const pruned = prune7Days(history);
+        const q = search.trim().toLowerCase();
+        if (!q) return pruned;
+        // Search across name and URL only, per requirements.
+        return pruned.filter((h) => `${h.name || ''} ${h.url}`.toLowerCase().includes(q));
+    }, [history, search]);
+
+    const groups = useMemo(() => groupHistoryByDate(filtered), [filtered]);
+
+    if (history.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                <div className="h-12 w-12 rounded-xl bg-primary-soft flex items-center justify-center mb-3">
+                    <History className="h-6 w-6 text-primary" />
                 </div>
-            </button>
-        ))}
-    </div>
-);
+                <h3 className="text-sm font-semibold mb-1">No history yet</h3>
+                <p className="text-xs text-muted-foreground">Send a request to see it here.</p>
+            </div>
+        );
+    }
+
+    if (filtered.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                <p className="text-xs text-muted-foreground" data-testid="history-empty-search">
+                    No history matches “{search}”.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-2" data-testid="history-list">
+            <div className="flex items-center justify-between px-2">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Last 7 days</span>
+                <button
+                    data-testid="history-clear-btn"
+                    onClick={onClear}
+                    className="text-[11px] text-muted-foreground hover:text-destructive transition-colors"
+                >
+                    Clear
+                </button>
+            </div>
+            {groups.map((g) => (
+                <div key={g.label} className="space-y-0.5">
+                    <div
+                        data-testid={`history-group-${g.label}`}
+                        className="px-2 py-1.5 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold"
+                    >
+                        {g.label}
+                    </div>
+                    {g.entries.map((h) => (
+                        <button
+                            key={h.id}
+                            data-testid={`history-entry-${h.id}`}
+                            onClick={() => onReplay(h)}
+                            className="group w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-sidebar-hover transition-colors text-left"
+                        >
+                            <MethodLabel method={h.method} className="w-11 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                                <div className="text-[13px] truncate">{h.name || h.url}</div>
+                                <div className="text-[11px] text-muted-foreground truncate mono">{h.url}</div>
+                            </div>
+                            <div className="flex flex-col items-end shrink-0">
+                                <span className="text-[11px] text-muted-foreground">{historyTimeLabel(h.timestamp ?? 0)}</span>
+                                <Repeat2 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            ))}
+        </div>
+    );
+};
 
 interface EnvironmentsViewProps {
     actions: SidebarActions;
@@ -995,6 +1323,7 @@ const EnvironmentsView: React.FC<EnvironmentsViewProps> = ({ actions, search, ed
                             onClick={() => !isRenaming && onOpenEnvironment(e)}
                             onDoubleClick={(ev) => {
                                 ev.stopPropagation();
+                                ev.preventDefault();
                                 editApi.startRename('environment', e.id);
                             }}
                             className="group flex items-center gap-2 px-3 py-2.5 rounded-lg border border-sidebar-border bg-card hover:bg-sidebar-hover transition-colors cursor-pointer"
