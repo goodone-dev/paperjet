@@ -251,18 +251,16 @@ export function useTabs(workspaceId: string | null) {
     );
 
     const closeAll = useCallback(() => {
-        setTabs((ts) => {
-            const pinnedOnly = ts.filter((t) => t.type === 'request' && t.pinned);
+        setTabState((prev) => {
+            const pinnedOnly = prev.tabs.filter((t) => t.type === 'request' && t.pinned);
             if (pinnedOnly.length > 0) {
-                setActiveTabId(pinnedOnly[0].id);
-                return pinnedOnly;
+                return { ...prev, tabs: pinnedOnly, activeTabId: pinnedOnly[0].id };
             }
             const fresh = DEFAULT_TAB();
             fresh.baseline = snapshot(fresh);
-            setActiveTabId(fresh.id);
-            return [fresh];
+            return { ...prev, tabs: [fresh], activeTabId: fresh.id };
         });
-    }, [setActiveTabId, setTabs]);
+    }, []);
 
     const forceCloseAll = useCallback(() => {
         const fresh = DEFAULT_TAB();
