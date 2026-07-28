@@ -701,32 +701,53 @@ export function useWorkspaceData() {
     const moveRequest = useCallback((src: DragSource, dest: DropDest) => {
         setCollections((cs) => {
             let moved: RequestSummary | null = null;
-            const removed = cs.map((c) => ({
-                ...c,
-                folders: (c.folders || []).map((f) => {
-                    if (c.id === src.colId && f.id === src.folderId) {
+            
+            const removeRequests = (folders: Folder[]): Folder[] => {
+                return (folders || []).map((f) => {
+                    if (f.id === src.folderId) {
                         moved = (f.requests || []).find((r) => r.id === src.reqId) || moved;
-                        return { ...f, requests: (f.requests || []).filter((r) => r.id !== src.reqId) };
+                        return { ...f, requests: (f.requests || []).filter((r) => r.id !== src.reqId), folders: removeRequests(f.folders || []) };
                     }
-                    return f;
-                }),
-            }));
+                    return { ...f, folders: removeRequests(f.folders || []) };
+                });
+            };
+
+            const removed = cs.map((c) => {
+                if (c.id !== src.colId) return c;
+                if (!src.folderId) {
+                    moved = (c.requests || []).find((r) => r.id === src.reqId) || moved;
+                    return { ...c, requests: (c.requests || []).filter((r) => r.id !== src.reqId) };
+                }
+                return { ...c, folders: removeRequests(c.folders || []) };
+            });
+
             if (!moved) return cs;
-            return removed.map((c) => {
-                if (c.id !== dest.colId) return c;
-                return {
-                    ...c,
-                    expanded: true,
-                    folders: (c.folders || []).map((f) => {
-                        if (f.id !== dest.folderId) return f;
+
+            const insertRequests = (folders: Folder[]): Folder[] => {
+                return (folders || []).map((f) => {
+                    if (f.id === dest.folderId) {
                         const reqs = f.requests || [];
                         if (!dest.beforeReqId) return { ...f, expanded: true, requests: [...reqs, moved!] };
                         const arr = [...reqs];
                         const i = arr.findIndex((r) => r.id === dest.beforeReqId);
                         arr.splice(i < 0 ? arr.length : i, 0, moved!);
                         return { ...f, expanded: true, requests: arr };
-                    }),
-                };
+                    }
+                    return { ...f, folders: insertRequests(f.folders || []) };
+                });
+            };
+
+            return removed.map((c) => {
+                if (c.id !== dest.colId) return c;
+                if (!dest.folderId) {
+                    const reqs = c.requests || [];
+                    if (!dest.beforeReqId) return { ...c, expanded: true, requests: [...reqs, moved!] };
+                    const arr = [...reqs];
+                    const i = arr.findIndex((r) => r.id === dest.beforeReqId);
+                    arr.splice(i < 0 ? arr.length : i, 0, moved!);
+                    return { ...c, expanded: true, requests: arr };
+                }
+                return { ...c, expanded: true, folders: insertRequests(c.folders || []) };
             });
         });
     }, []);
@@ -734,26 +755,53 @@ export function useWorkspaceData() {
     const moveFolder = useCallback((src: DragSource, dest: DropDest) => {
         setCollections((cs) => {
             let moved: Folder | null = null;
-            const removed = cs.map((c) =>
-                c.id === src.colId
-                    ? {
-                        ...c,
-                        folders: (c.folders || []).filter((f) =>
-                            f.id === src.folderId ? ((moved = f), false) : true,
-                        ),
+            
+            const removeFolders = (folders: Folder[]): Folder[] => {
+                return (folders || []).filter((f) => {
+                    if (f.id === src.folderId) {
+                        moved = f;
+                        return false;
                     }
-                    : c,
-            );
+                    return true;
+                }).map(f => ({ ...f, folders: removeFolders(f.folders || []) }));
+            };
+
+            const removed = cs.map((c) => {
+                if (c.id !== src.colId) return c;
+                return { ...c, folders: removeFolders(c.folders || []) };
+            });
+
             if (!moved) return cs;
+
+            const insertFolders = (folders: Folder[]): Folder[] => {
+                return (folders || []).map((f) => {
+                    if (f.id === dest.folderId) {
+                        // Drop INSIDE this folder
+                        const arr = [...(f.folders || [])];
+                        if (!dest.beforeFolderId) arr.push(moved!);
+                        else {
+                            const i = arr.findIndex((subF) => subF.id === dest.beforeFolderId);
+                            arr.splice(i < 0 ? arr.length : i, 0, moved!);
+                        }
+                        return { ...f, expanded: true, folders: arr };
+                    }
+                    return { ...f, folders: insertFolders(f.folders || []) };
+                });
+            };
+
             return removed.map((c) => {
                 if (c.id !== dest.colId) return c;
-                const arr = [...(c.folders || [])];
-                if (!dest.beforeFolderId) arr.push(moved!);
-                else {
-                    const i = arr.findIndex((f) => f.id === dest.beforeFolderId);
-                    arr.splice(i < 0 ? arr.length : i, 0, moved!);
+                if (!dest.folderId) {
+                    // Drop at ROOT of collection
+                    const arr = [...(c.folders || [])];
+                    if (!dest.beforeFolderId) arr.push(moved!);
+                    else {
+                        const i = arr.findIndex((f) => f.id === dest.beforeFolderId);
+                        arr.splice(i < 0 ? arr.length : i, 0, moved!);
+                    }
+                    return { ...c, expanded: true, folders: arr };
                 }
-                return { ...c, expanded: true, folders: arr };
+                return { ...c, expanded: true, folders: insertFolders(c.folders || []) };
             });
         });
     }, []);

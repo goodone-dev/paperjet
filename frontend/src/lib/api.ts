@@ -156,6 +156,20 @@ export interface MoveCollectionPayload {
     target_workspace_id: string;
 }
 
+export interface CollectionTreeItem {
+    type: 'folder' | 'request';
+    id: string;
+    name: string;
+    method?: string;
+    sort_order?: string;
+    items?: CollectionTreeItem[];
+}
+
+export interface ReorderCollectionItemsPayload {
+    parent_folder_id?: string;
+    items: CollectionTreeItem[];
+}
+
 // ─── Typed bindings ──────────────────────────────────────────────────────
 
 // The raw `wailsjs` module is generated JavaScript; we cast it once here so
@@ -200,6 +214,11 @@ export const MoveCollection = (id: string, payload: MoveCollectionPayload): Prom
     api.MoveCollection(id, payload);
 export const UpdateCollectionSortOrder = (id: string, name: string, sortOrder: string): Promise<WireCollectionResponse> =>
     api.UpdateCollectionSortOrder(id, name, sortOrder);
+export const ReorderCollectionItems = (
+    id: string,
+    name: string,
+    payload: ReorderCollectionItemsPayload,
+): Promise<void> => api.ReorderCollectionItems(id, name, payload);
 
 // Folders
 export const CreateFolder = (payload: CreateFolderPayload): Promise<WireFolderResponse> => api.CreateFolder(payload);
