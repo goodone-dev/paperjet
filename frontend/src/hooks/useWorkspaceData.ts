@@ -27,10 +27,12 @@ import {
     DuplicateCollection,
     UpdateCollectionFavorite,
     MoveCollection,
+    UpdateCollectionSortOrder,
     CreateFolder,
     RenameFolder,
     DeleteFolder,
     DuplicateFolder,
+    UpdateFolderSortOrder,
     CreateRequest,
     RenameRequest,
     DeleteRequest,
@@ -287,13 +289,13 @@ export function useWorkspaceData() {
                     cs.map((oc) =>
                         oc.id === id
                             ? {
-                                  ...c,
-                                  favorite: c.is_favorite,
-                                  folders: c.folders,
-                                  requests: c.requests || [],
-                                  expanded: oc.expanded,
-                                  loaded: true,
-                              }
+                                ...c,
+                                favorite: c.is_favorite,
+                                folders: c.folders,
+                                requests: c.requests || [],
+                                expanded: oc.expanded,
+                                loaded: true,
+                            }
                             : oc,
                     ),
                 );
@@ -352,13 +354,13 @@ export function useWorkspaceData() {
                         cs.map((oc) =>
                             oc.id === id
                                 ? {
-                                      ...c,
-                                      favorite: c.is_favorite,
-                                      folders: expandAll(c.folders || []),
-                                      requests: c.requests || [],
-                                      expanded: true,
-                                      loaded: true,
-                                  }
+                                    ...c,
+                                    favorite: c.is_favorite,
+                                    folders: expandAll(c.folders || []),
+                                    requests: c.requests || [],
+                                    expanded: true,
+                                    loaded: true,
+                                }
                                 : oc,
                         ),
                     );
@@ -497,28 +499,22 @@ export function useWorkspaceData() {
         }));
     }, []);
 
-    const duplicateFolder = useCallback(async (colId: string, folderId: string) => {
-        try {
-            await DuplicateFolder(folderId);
-            // The backend duplicates the folder + all nested subfolders + requests,
-            // but only returns the flat root folder (without its subtree). Refresh
-            // the entire collection so the sidebar shows the full duplicated subtree.
+    // Helper: refresh a collection from the backend while keeping expand/collapse state.
+    const refreshCollection = useCallback(
+        async (colId: string) => {
             const c: any = await GetCollection(colId);
             setCollections((cs) =>
                 cs.map((oc) => {
                     if (oc.id !== colId) return oc;
-
-                    const preserveExpanded = (newFolders: any[], oldFolders: any[]): any[] => {
-                        return newFolders.map((newF) => {
+                    const preserveExpanded = (newFolders: any[], oldFolders: any[]): any[] =>
+                        newFolders.map((newF) => {
                             const oldF = oldFolders.find((f) => f.id === newF.id);
                             return {
                                 ...newF,
                                 expanded: oldF ? oldF.expanded : false,
-                                folders: preserveExpanded(newF.folders || [], oldF ? (oldF.folders || []) : []),
+                                folders: preserveExpanded(newF.folders || [], oldF ? oldF.folders || [] : []),
                             };
                         });
-                    };
-
                     return {
                         ...c,
                         favorite: c.is_favorite,
@@ -529,10 +525,47 @@ export function useWorkspaceData() {
                     };
                 }),
             );
+        },
+        [],
+    );
+
+    const duplicateFolder = useCallback(async (colId: string, folderId: string) => {
+        try {
+            await DuplicateFolder(folderId);
+            await refreshCollection(colId);
         } catch (err) {
             console.error('Failed to duplicate folder', err);
         }
-    }, []);
+    }, [refreshCollection]);
+
+    const updateCollectionSortOrder = useCallback(
+        async (colId: string, sortOrder: string) => {
+            try {
+                const col = collections.find((c) => c.id === colId);
+                if (!col) return;
+                await UpdateCollectionSortOrder(colId, col.name, sortOrder);
+                await refreshCollection(colId);
+            } catch (err) {
+                console.error('Failed to update collection sort order', err);
+            }
+        },
+        [collections, refreshCollection],
+    );
+
+    const updateFolderSortOrder = useCallback(
+        async (colId: string, folderId: string, sortOrder: string) => {
+            try {
+                const col = collections.find((c) => c.id === colId);
+                const folder = findFolder(col?.folders, folderId);
+                if (!folder) return;
+                await UpdateFolderSortOrder(folderId, folder.name, sortOrder);
+                await refreshCollection(colId);
+            } catch (err) {
+                console.error('Failed to update folder sort order', err);
+            }
+        },
+        [collections, refreshCollection],
+    );
 
     // ---- Request CRUD ----
     const addRequest = useCallback(
@@ -704,11 +737,11 @@ export function useWorkspaceData() {
             const removed = cs.map((c) =>
                 c.id === src.colId
                     ? {
-                          ...c,
-                          folders: (c.folders || []).filter((f) =>
-                              f.id === src.folderId ? ((moved = f), false) : true,
-                          ),
-                      }
+                        ...c,
+                        folders: (c.folders || []).filter((f) =>
+                            f.id === src.folderId ? ((moved = f), false) : true,
+                        ),
+                    }
                     : c,
             );
             if (!moved) return cs;
@@ -847,6 +880,7 @@ export function useWorkspaceData() {
         toggleFavorite,
         duplicateCollection,
         moveCollection,
+        updateCollectionSortOrder,
         // Folder
         addFolder,
         renameFolder,
@@ -855,6 +889,7 @@ export function useWorkspaceData() {
         collapseFolder,
         expandFolder,
         duplicateFolder,
+        updateFolderSortOrder,
         // Request
         addRequest,
         renameRequest,

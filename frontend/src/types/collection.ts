@@ -63,6 +63,7 @@ export interface RequestSummary {
 export interface Folder {
     id: string;
     name: string;
+    sort_order?: string;
     expanded: boolean;
     loaded?: boolean;
     folders: Folder[];
@@ -72,6 +73,7 @@ export interface Folder {
 export interface Collection {
     id: string;
     name: string;
+    sort_order?: string;
     favorite: boolean;
     expanded: boolean;
     loaded: boolean;

@@ -26,7 +26,11 @@ import {
     History,
     StarOff,
     Repeat2,
+    ArrowUpDown,
     type LucideIcon,
+    Check,
+    ArrowDownAZ,
+    ListOrdered,
 } from 'lucide-react';
 import {
     DndContext,
@@ -105,6 +109,8 @@ export interface SidebarActions {
     duplicateEnvironment: (id: string) => void | Promise<void>;
     setActiveEnvironment: (id: string | null) => void;
     clearHistory: () => void;
+    updateCollectionSortOrder: (colId: string, sortOrder: string) => void | Promise<void>;
+    updateFolderSortOrder: (colId: string, folderId: string, sortOrder: string) => void | Promise<void>;
 }
 
 const COLLAPSE_ANIM = {
@@ -602,6 +608,7 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
                 editApi.startCreate('folder', col.id);
             },
         },
+        { separator: true },
         {
             label: 'Explore',
             icon: Compass,
@@ -614,6 +621,16 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
                 () => actions.expandCollection(col.id),
                 `collection-${col.id}`,
             ),
+        },
+        {
+            label: 'Sort',
+            icon: ArrowUpDown,
+            testId: `collection-sort-${col.id}`,
+            onClick: () => { },
+            submenu: [
+                { label: 'Default', icon: col.sort_order == 'default' ? Check : ListOrdered, onClick: () => actions.updateCollectionSortOrder(col.id, 'default') },
+                { label: 'A to Z', icon: col.sort_order == 'alpha' ? Check : ArrowDownAZ, onClick: () => actions.updateCollectionSortOrder(col.id, 'alpha') },
+            ],
         },
         { separator: true },
         { label: 'Rename', icon: Pencil, testId: `collection-rename-${col.id}`, onClick: () => editApi.startRename('collection', col.id) },
@@ -787,6 +804,7 @@ const FolderRow: React.FC<FolderRowProps> = ({
                 editApi.startCreate('subfolder', col.id, folder.id);
             },
         },
+        { separator: true },
         {
             label: 'Explore',
             icon: Compass,
@@ -799,6 +817,16 @@ const FolderRow: React.FC<FolderRowProps> = ({
                 () => actions.expandFolder(col.id, folder.id),
                 `folder-${folder.id}`,
             ),
+        },
+        {
+            label: 'Sort',
+            icon: ArrowUpDown,
+            testId: `folder-sort-${folder.id}`,
+            onClick: () => { },
+            submenu: [
+                { label: 'Default', icon: folder.sort_order == 'default' ? Check : ListOrdered, onClick: () => actions.updateFolderSortOrder(col.id, folder.id, 'default') },
+                { label: 'A to Z', icon: folder.sort_order == 'alpha' ? Check : ArrowDownAZ, onClick: () => actions.updateFolderSortOrder(col.id, folder.id, 'alpha') },
+            ],
         },
         { separator: true },
         {

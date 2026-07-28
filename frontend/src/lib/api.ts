@@ -198,6 +198,8 @@ export const UpdateCollectionFavorite = (id: string, favorite: boolean): Promise
     api.UpdateCollectionFavorite(id, favorite);
 export const MoveCollection = (id: string, payload: MoveCollectionPayload): Promise<WireCollectionResponse> =>
     api.MoveCollection(id, payload);
+export const UpdateCollectionSortOrder = (id: string, name: string, sortOrder: string): Promise<WireCollectionResponse> =>
+    api.UpdateCollectionSortOrder(id, name, sortOrder);
 
 // Folders
 export const CreateFolder = (payload: CreateFolderPayload): Promise<WireFolderResponse> => api.CreateFolder(payload);
@@ -205,6 +207,8 @@ export const RenameFolder = (id: string, payload: RenameFolderPayload): Promise<
     api.RenameFolder(id, payload);
 export const DeleteFolder = (id: string, name: string): Promise<void> => api.DeleteFolder(id, name);
 export const DuplicateFolder = (id: string): Promise<WireFolderResponse> => api.DuplicateFolder(id);
+export const UpdateFolderSortOrder = (id: string, name: string, sortOrder: string): Promise<WireFolderResponse> =>
+    api.UpdateFolderSortOrder(id, name, sortOrder);
 
 // Requests
 export const GetRequest = (id: string): Promise<WireRequestResponse> => api.GetRequest(id);

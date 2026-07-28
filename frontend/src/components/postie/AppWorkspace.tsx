@@ -195,6 +195,8 @@ export default function AppWorkspace() {
         collapseFolder: data.collapseFolder,
         expandFolder: data.expandFolder,
         duplicateFolder: data.duplicateFolder,
+        updateCollectionSortOrder: data.updateCollectionSortOrder,
+        updateFolderSortOrder: data.updateFolderSortOrder,
         addRequest: data.addRequest,
         renameRequest: data.renameRequest,
         deleteRequest: data.deleteRequest,
