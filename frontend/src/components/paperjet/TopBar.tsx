@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Settings, Bell, HelpCircle, Sparkles, ChevronDown, Boxes, Check, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Search, Settings, Bell, HelpCircle, Sparkles, ChevronDown, Check, Plus, Pencil, Trash2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -63,7 +63,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <div className="flex items-center gap-2.5 shrink-0">
                     <div className="relative">
                         <div className="h-9 w-9 rounded-xl bg-gradient-primary flex items-center justify-center shadow-elegant">
-                            <Boxes className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
+                            <Send className="h-5 w-5 text-primary-foreground -ml-0.5" strokeWidth={2.5} />
                         </div>
                         <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-success border-2 border-card" />
                     </div>
