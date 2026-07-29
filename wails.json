@@ -1,7 +1,7 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "Postie",
-  "outputfilename": "Postie",
+  "name": "PaperJet",
+  "outputfilename": "PaperJet",
   "wailsjsdir": "./frontend/src",
   "frontend:install": "yarn install",
   "frontend:build": "yarn build",

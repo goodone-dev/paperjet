@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/goodone-dev/postie/internal/domain/collection"
-	"github.com/goodone-dev/postie/internal/infrastructure/logger"
-	httperror "github.com/goodone-dev/postie/internal/utils/http_response/error"
+	"github.com/goodone-dev/paperjet/internal/domain/collection"
+	"github.com/goodone-dev/paperjet/internal/infrastructure/logger"
+	httperror "github.com/goodone-dev/paperjet/internal/utils/http_response/error"
 	"github.com/google/uuid"
 )
 

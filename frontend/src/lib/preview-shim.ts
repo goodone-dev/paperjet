@@ -1,6 +1,6 @@
 // Preview-only Wails runtime shim.
 //
-// Postie is a Wails desktop app; when run in the browser preview (or in tests)
+// PaperJet is a Wails desktop app; when run in the browser preview (or in tests)
 // the `window.go` bridge doesn't exist and every backend call throws
 // "Cannot read properties of undefined (reading 'main')".
 //
@@ -70,7 +70,7 @@ interface WsWorkspace {
     slug: string;
 }
 
-const STORAGE_KEY = 'postie:preview-mock-db';
+const STORAGE_KEY = 'paperjet:preview-mock-db';
 
 interface DB {
     workspaces: WsWorkspace[];
@@ -511,5 +511,5 @@ export function installBrowserRuntimeShim(): void {
     w.go.main = w.go.main || {};
     w.go.main.App = shim;
     // eslint-disable-next-line no-console
-    console.info('[postie] Preview runtime shim installed (Wails bridge not detected).');
+    console.info('[paperjet] Preview runtime shim installed (Wails bridge not detected).');
 }

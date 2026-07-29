@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import AppWorkspace from '@/components/postie/AppWorkspace';
+import AppWorkspace from '@/components/paperjet/AppWorkspace';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {

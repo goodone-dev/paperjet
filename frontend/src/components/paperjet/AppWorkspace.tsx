@@ -1,17 +1,17 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { TopBar } from '@/components/postie/TopBar';
-import { Sidebar } from '@/components/postie/Sidebar';
-import { RequestTabsBar } from '@/components/postie/RequestTabsBar';
-import { RequestPanel } from '@/components/postie/RequestPanel';
-import { ResponsePanel } from '@/components/postie/ResponsePanel';
-import { EnvironmentEditor } from '@/components/postie/EnvironmentEditor';
+import { TopBar } from '@/components/paperjet/TopBar';
+import { Sidebar } from '@/components/paperjet/Sidebar';
+import { RequestTabsBar } from '@/components/paperjet/RequestTabsBar';
+import { RequestPanel } from '@/components/paperjet/RequestPanel';
+import { ResponsePanel } from '@/components/paperjet/ResponsePanel';
+import { EnvironmentEditor } from '@/components/paperjet/EnvironmentEditor';
 import {
     ConfirmDialog,
     MoveDialog,
     SaveRequestDialog,
     type ConfirmDialogConfig,
     type SaveRequestDialogConfig,
-} from '@/components/postie/CrudDialogs';
+} from '@/components/paperjet/CrudDialogs';
 import { useWorkspaceData } from '@/hooks/useWorkspaceData';
 import { useTabs } from '@/hooks/useTabs';
 import { useRequestSend } from '@/hooks/useRequestSend';

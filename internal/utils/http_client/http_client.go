@@ -7,8 +7,8 @@ import (
 	"runtime"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/goodone-dev/postie/internal/config"
-	"github.com/goodone-dev/postie/internal/utils/breaker"
+	"github.com/goodone-dev/paperjet/internal/config"
+	"github.com/goodone-dev/paperjet/internal/utils/breaker"
 	"github.com/sony/gobreaker/v2"
 )
 

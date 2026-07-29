@@ -68,7 +68,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                         <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-success border-2 border-card" />
                     </div>
                     <div className="hidden sm:block">
-                        <div className="text-[15px] font-semibold leading-tight text-foreground">Postie</div>
+                        <div className="text-[15px] font-semibold leading-tight text-foreground">PaperJet</div>
                         <div className="text-[10px] text-muted-foreground leading-tight">API Workspace</div>
                     </div>
                 </div>

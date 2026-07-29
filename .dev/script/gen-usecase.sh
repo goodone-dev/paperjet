@@ -56,7 +56,7 @@ cat > "${USECASE_IMPL_DIR}/${USECASE_SNAKE}.usecase.go" << EOF
 package usecase
 
 import (
-	"github.com/goodone-dev/postie/internal/domain/${DOMAIN_NAME}"
+	"github.com/goodone-dev/paperjet/internal/domain/${DOMAIN_NAME}"
 )
 
 type ${USECASE_CAMEL}Usecase struct {

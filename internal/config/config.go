@@ -65,7 +65,7 @@ type HttpClientConfig struct {
 
 var (
 	HomeDir, _ = os.UserHomeDir()
-	ConfigDir  = filepath.Join(HomeDir, ".postie")
+	ConfigDir  = filepath.Join(HomeDir, ".paperjet")
 	ConfigPath = filepath.Join(ConfigDir, "config")
 )
 
@@ -114,12 +114,12 @@ func setDefaultConfig() {
 	viper.SetDefault("CONTEXT_TIMEOUT", "5s")
 
 	// Application defaults
-	viper.SetDefault("APP_NAME", "postie")
+	viper.SetDefault("APP_NAME", "paperjet")
 	viper.SetDefault("APP_PORT", 8080)
 	viper.SetDefault("APP_ENV", "local")
 
 	// DB defaults
-	viper.SetDefault("DB_NAME", filepath.Join(ConfigDir, "postie.db"))
+	viper.SetDefault("DB_NAME", filepath.Join(ConfigDir, "paperjet.db"))
 	viper.SetDefault("DB_AUTO_MIGRATE", true)
 	viper.SetDefault("DB_MAX_OPEN_CONNECTIONS", 10)
 	viper.SetDefault("DB_MAX_IDLE_CONNECTIONS", 10)

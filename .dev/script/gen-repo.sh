@@ -47,7 +47,7 @@ cat > "${DOMAIN_DIR}/${ENTITY_SNAKE}.entity.go" << EOF
 package ${DOMAIN_NAME}
 
 import (
-	"github.com/goodone-dev/postie/internal/infrastructure/database"
+	"github.com/goodone-dev/paperjet/internal/infrastructure/database"
 	"github.com/google/uuid"
 )
 
@@ -66,7 +66,7 @@ cat > "${DOMAIN_DIR}/${ENTITY_SNAKE}.repository.go" << EOF
 package ${DOMAIN_NAME}
 
 import (
-	"github.com/goodone-dev/postie/internal/infrastructure/database"
+	"github.com/goodone-dev/paperjet/internal/infrastructure/database"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -81,8 +81,8 @@ cat > "${REPO_IMPL_DIR}/${ENTITY_SNAKE}.repository.go" << EOF
 package repository
 
 import (
-	"github.com/goodone-dev/postie/internal/domain/${DOMAIN_NAME}"
-	"github.com/goodone-dev/postie/internal/infrastructure/database"
+	"github.com/goodone-dev/paperjet/internal/domain/${DOMAIN_NAME}"
+	"github.com/goodone-dev/paperjet/internal/infrastructure/database"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )

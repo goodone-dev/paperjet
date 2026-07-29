@@ -1,7 +1,7 @@
 package breaker
 
 import (
-	"github.com/goodone-dev/postie/internal/config"
+	"github.com/goodone-dev/paperjet/internal/config"
 	"github.com/sony/gobreaker/v2"
 )
 

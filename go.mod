@@ -1,4 +1,4 @@
-module github.com/goodone-dev/postie
+module github.com/goodone-dev/paperjet
 
 go 1.25.6
 

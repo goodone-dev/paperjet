@@ -1,8 +1,8 @@
-// Tiny localStorage helpers for persisting Postie state across reloads.
-// Postie is a Wails desktop app — localStorage here only stores UI state
+// Tiny localStorage helpers for persisting PaperJet state across reloads.
+// PaperJet is a Wails desktop app — localStorage here only stores UI state
 // (active workspace id, tab layout, request history). No credentials or
 // secrets touch this file; those live in SQLite via the Go backend.
-const PREFIX = 'postie:';
+const PREFIX = 'paperjet:';
 
 export function loadState<T>(key: string, fallback: T): T {
     try {

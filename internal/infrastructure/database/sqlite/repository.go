@@ -5,8 +5,8 @@ import (
 	"math"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/goodone-dev/postie/internal/config"
-	"github.com/goodone-dev/postie/internal/infrastructure/database"
+	"github.com/goodone-dev/paperjet/internal/config"
+	"github.com/goodone-dev/paperjet/internal/infrastructure/database"
 	"gorm.io/gorm"
 )
 

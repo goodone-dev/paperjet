@@ -7,8 +7,8 @@ import (
 	universal "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	translations "github.com/go-playground/validator/v10/translations/en"
-	"github.com/goodone-dev/postie/internal/infrastructure/logger"
-	"github.com/goodone-dev/postie/internal/utils/validator/rules"
+	"github.com/goodone-dev/paperjet/internal/infrastructure/logger"
+	"github.com/goodone-dev/paperjet/internal/utils/validator/rules"
 )
 
 type CustomValidator struct {

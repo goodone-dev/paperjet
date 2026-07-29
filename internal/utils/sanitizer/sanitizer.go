@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/go-sanitize/sanitize"
-	"github.com/goodone-dev/postie/internal/infrastructure/logger"
+	"github.com/goodone-dev/paperjet/internal/infrastructure/logger"
 )
 
 // Docs: https://github.com/go-sanitize/sanitize

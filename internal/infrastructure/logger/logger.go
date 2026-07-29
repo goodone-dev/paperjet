@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/goodone-dev/postie/internal/config"
-	"github.com/goodone-dev/postie/internal/utils/masker"
+	"github.com/goodone-dev/paperjet/internal/config"
+	"github.com/goodone-dev/paperjet/internal/utils/masker"
 	"github.com/rs/zerolog"
 )
 

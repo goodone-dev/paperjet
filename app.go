@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/goodone-dev/postie/internal/domain/collection"
-	"github.com/goodone-dev/postie/internal/domain/environment"
-	"github.com/goodone-dev/postie/internal/domain/workspace"
-	"github.com/goodone-dev/postie/internal/infrastructure/logger"
+	"github.com/goodone-dev/paperjet/internal/domain/collection"
+	"github.com/goodone-dev/paperjet/internal/domain/environment"
+	"github.com/goodone-dev/paperjet/internal/domain/workspace"
+	"github.com/goodone-dev/paperjet/internal/infrastructure/logger"
 	"github.com/google/uuid"
 )
 

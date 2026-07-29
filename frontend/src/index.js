@@ -10,7 +10,7 @@ import { installBrowserRuntimeShim } from "@/lib/preview-shim";
 installBrowserRuntimeShim();
 
 // React Query cache freshness: data is considered fresh for one minute before
-// being refetched. Chosen to match Postie's average interactive session length.
+// being refetched. Chosen to match PaperJet's average interactive session length.
 const QUERY_STALE_TIME_MS = 60_000;
 
 const queryClient = new QueryClient({
@@ -24,7 +24,7 @@ const queryClient = new QueryClient({
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>,
+  <QueryClientProvider client={queryClient}>
+    <App />
+  </QueryClientProvider>,
 );

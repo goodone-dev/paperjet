@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"github.com/goodone-dev/postie/internal/domain/collection"
-	"github.com/goodone-dev/postie/internal/infrastructure/database"
+	"github.com/goodone-dev/paperjet/internal/domain/collection"
+	"github.com/goodone-dev/paperjet/internal/infrastructure/database"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )

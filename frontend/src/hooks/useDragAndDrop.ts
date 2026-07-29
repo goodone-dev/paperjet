@@ -16,7 +16,7 @@ import {
     type DragData,
 } from '@/lib/dnd-helpers';
 import type { Collection } from '@/types/collection';
-import type { SidebarActions } from '@/components/postie/Sidebar';
+import type { SidebarActions } from '@/components/paperjet/Sidebar';
 
 interface UseDragAndDropReturn {
     sensors: ReturnType<typeof useSensors>;

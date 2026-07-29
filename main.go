@@ -4,19 +4,19 @@ import (
 	"context"
 	"embed"
 
-	collectionRepoImpl "github.com/goodone-dev/postie/internal/application/collection/repository"
-	collectionUsecaseImpl "github.com/goodone-dev/postie/internal/application/collection/usecase"
-	workspaceRepoImpl "github.com/goodone-dev/postie/internal/application/workspace/repository"
-	workspaceUsecaseImpl "github.com/goodone-dev/postie/internal/application/workspace/usecase"
-	"github.com/goodone-dev/postie/internal/config"
-	"github.com/goodone-dev/postie/internal/domain/collection"
-	"github.com/goodone-dev/postie/internal/domain/environment"
-	"github.com/goodone-dev/postie/internal/domain/workspace"
-	"github.com/goodone-dev/postie/internal/infrastructure/database/sqlite"
-	"github.com/goodone-dev/postie/internal/infrastructure/logger"
+	collectionRepoImpl "github.com/goodone-dev/paperjet/internal/application/collection/repository"
+	collectionUsecaseImpl "github.com/goodone-dev/paperjet/internal/application/collection/usecase"
+	workspaceRepoImpl "github.com/goodone-dev/paperjet/internal/application/workspace/repository"
+	workspaceUsecaseImpl "github.com/goodone-dev/paperjet/internal/application/workspace/usecase"
+	"github.com/goodone-dev/paperjet/internal/config"
+	"github.com/goodone-dev/paperjet/internal/domain/collection"
+	"github.com/goodone-dev/paperjet/internal/domain/environment"
+	"github.com/goodone-dev/paperjet/internal/domain/workspace"
+	"github.com/goodone-dev/paperjet/internal/infrastructure/database/sqlite"
+	"github.com/goodone-dev/paperjet/internal/infrastructure/logger"
 
-	environmentRepoImpl "github.com/goodone-dev/postie/internal/application/environment/repository"
-	environmentUsecaseImpl "github.com/goodone-dev/postie/internal/application/environment/usecase"
+	environmentRepoImpl "github.com/goodone-dev/paperjet/internal/application/environment/repository"
+	environmentUsecaseImpl "github.com/goodone-dev/paperjet/internal/application/environment/usecase"
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -67,7 +67,7 @@ func main() {
 
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:            "Postie",
+		Title:            "PaperJet",
 		Width:            1024,
 		Height:           768,
 		WindowStartState: options.Maximised,
