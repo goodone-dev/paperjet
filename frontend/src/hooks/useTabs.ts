@@ -228,6 +228,7 @@ export function useTabs(workspaceId: string | null) {
             const copy: RequestTab = {
                 ...(src as RequestTab),
                 id: `req-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                sourceId: '',
                 response: null,
                 isSending: false,
                 pinned: false,
