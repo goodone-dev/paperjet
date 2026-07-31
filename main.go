@@ -73,6 +73,7 @@ func main() {
 		Width:            1024,
 		Height:           768,
 		Menu:             menu,
+		Frameless:        true,
 		WindowStartState: options.Maximised,
 		AssetServer: &assetserver.Options{
 			Assets: assets,

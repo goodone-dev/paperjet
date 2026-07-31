@@ -18,7 +18,7 @@ import {
     Copy,
     ChevronsDownUp,
     ChevronsUpDown,
-    Compass,
+    Eye,
     ArrowRight,
     Code2,
     FileText,
@@ -576,11 +576,11 @@ const CollectionsView: React.FC<CollectionsViewProps> = ({
     );
 };
 
-// Explore submenu shared by both Collection and Folder rows.
-function exploreSubmenu(onCollapse: () => void, onExpand: () => void, id: string): MenuEntry[] {
+// View submenu shared by both Collection and Folder rows.
+function viewSubmenu(onCollapse: () => void, onExpand: () => void, id: string): MenuEntry[] {
     return [
-        { label: 'Collapse Folders', icon: ChevronsDownUp, testId: `${id}-collapse`, onClick: onCollapse },
-        { label: 'Expand Folders', icon: ChevronsUpDown, testId: `${id}-expand`, onClick: onExpand },
+        { label: 'Collapse All', icon: ChevronsDownUp, testId: `${id}-collapse`, onClick: onCollapse },
+        { label: 'Expand All', icon: ChevronsUpDown, testId: `${id}-expand`, onClick: onExpand },
     ];
 }
 
@@ -612,12 +612,6 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
 
     const items: MenuEntry[] = [
         {
-            label: col.favorite ? 'Unfavorite' : 'Favorite',
-            icon: col.favorite ? StarOff : Star,
-            testId: `collection-favorite-${col.id}`,
-            onClick: () => actions.toggleFavorite(col.id),
-        },
-        {
             label: 'Add Request',
             icon: FilePlus2,
             testId: `collection-add-request-${col.id}`,
@@ -636,14 +630,22 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
             },
         },
         { separator: true },
+        { label: 'Rename', icon: Pencil, testId: `collection-rename-${col.id}`, onClick: () => editApi.startRename('collection', col.id) },
+        { label: 'Duplicate', icon: Copy, testId: `collection-duplicate-${col.id}`, onClick: () => actions.duplicateCollection(col.id) },
+        { label: 'Move', icon: ArrowRight, testId: `collection-move-${col.id}`, onClick: () => onMove(col) },
+        { separator: true },
         {
-            label: 'Explore',
-            icon: Compass,
-            testId: `collection-explore-${col.id}`,
-            onClick: () => {
-                // Parent action; submenu carries the real intent.
-            },
-            submenu: exploreSubmenu(
+            label: col.favorite ? 'Unfavorite' : 'Favorite',
+            icon: col.favorite ? StarOff : Star,
+            testId: `collection-favorite-${col.id}`,
+            onClick: () => actions.toggleFavorite(col.id),
+        },
+        {
+            label: 'View',
+            icon: Eye,
+            testId: `collection-view-${col.id}`,
+            onClick: () => { },
+            submenu: viewSubmenu(
                 () => actions.collapseCollection(col.id),
                 () => actions.expandCollection(col.id),
                 `collection-${col.id}`,
@@ -659,10 +661,6 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
                 { label: 'A to Z', icon: col.sort_order == 'alpha' ? Check : ArrowDownAZ, onClick: () => actions.updateCollectionSortOrder(col.id, 'alpha') },
             ],
         },
-        { separator: true },
-        { label: 'Rename', icon: Pencil, testId: `collection-rename-${col.id}`, onClick: () => editApi.startRename('collection', col.id) },
-        { label: 'Duplicate', icon: Copy, testId: `collection-duplicate-${col.id}`, onClick: () => actions.duplicateCollection(col.id) },
-        { label: 'Move', icon: ArrowRight, testId: `collection-move-${col.id}`, onClick: () => onMove(col) },
         { separator: true },
         {
             label: 'Delete',
@@ -849,13 +847,24 @@ const FolderRow: React.FC<FolderRowProps> = ({
         },
         { separator: true },
         {
-            label: 'Explore',
-            icon: Compass,
-            testId: `folder-explore-${folder.id}`,
-            onClick: () => {
-                // Parent action; submenu handles the real work.
-            },
-            submenu: exploreSubmenu(
+            label: 'Rename',
+            icon: Pencil,
+            testId: `folder-rename-${folder.id}`,
+            onClick: () => editApi.startRename('folder', folder.id, col.id),
+        },
+        {
+            label: 'Duplicate',
+            icon: Copy,
+            testId: `folder-duplicate-${folder.id}`,
+            onClick: () => actions.duplicateFolder(col.id, folder.id),
+        },
+        { separator: true },
+        {
+            label: 'View',
+            icon: Eye,
+            testId: `folder-view-${folder.id}`,
+            onClick: () => { },
+            submenu: viewSubmenu(
                 () => actions.collapseFolder(col.id, folder.id),
                 () => actions.expandFolder(col.id, folder.id),
                 `folder-${folder.id}`,
@@ -870,19 +879,6 @@ const FolderRow: React.FC<FolderRowProps> = ({
                 { label: 'Default', icon: folder.sort_order == 'default' ? Check : ListOrdered, onClick: () => actions.updateFolderSortOrder(col.id, folder.id, 'default') },
                 { label: 'A to Z', icon: folder.sort_order == 'alpha' ? Check : ArrowDownAZ, onClick: () => actions.updateFolderSortOrder(col.id, folder.id, 'alpha') },
             ],
-        },
-        { separator: true },
-        {
-            label: 'Rename',
-            icon: Pencil,
-            testId: `folder-rename-${folder.id}`,
-            onClick: () => editApi.startRename('folder', folder.id, col.id),
-        },
-        {
-            label: 'Duplicate',
-            icon: Copy,
-            testId: `folder-duplicate-${folder.id}`,
-            onClick: () => actions.duplicateFolder(col.id, folder.id),
         },
         { separator: true },
         {
