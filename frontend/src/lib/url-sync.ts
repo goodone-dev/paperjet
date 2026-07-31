@@ -8,7 +8,7 @@ function extractKeys(url: string): string[] {
 
 function newRow(key: string, value: string): KeyValueRow {
     return {
-        id: `pv${Date.now()}${Math.random()}`,
+        id: `pv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         key,
         value,
         description: '',
@@ -85,7 +85,7 @@ export function syncParamsFromUrl(newUrl: string, currentParams: KeyValueRow[]):
     while (idx < searchParams.length) {
         const [k, v] = searchParams[idx];
         newParams.push({
-            id: `p${Date.now()}${Math.random()}`,
+            id: `p-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
             key: k,
             value: v,
             description: '',
@@ -96,7 +96,7 @@ export function syncParamsFromUrl(newUrl: string, currentParams: KeyValueRow[]):
     const last = newParams[newParams.length - 1];
     if (!last || last.key || last.value) {
         newParams.push({
-            id: `p${Date.now()}${Math.random()}`,
+            id: `p-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
             key: '',
             value: '',
             description: '',

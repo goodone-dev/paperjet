@@ -15,7 +15,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ env, onCha
     const initialRows = useCallback((): KeyValueRow[] =>
         env.variables && env.variables.length > 0
             ? (env.variables as KeyValueRow[])
-            : [{ id: 'v-empty', key: '', value: '', enabled: true }], [env.variables]);
+            : [{ id: `v-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', value: '', enabled: true }], [env.variables]);
 
     const [localVars, setLocalVars] = useState<KeyValueRow[]>(initialRows);
     const containerRef = useRef<HTMLDivElement>(null);

@@ -28,13 +28,19 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
     const [isBulkEdit, setIsBulkEdit] = useState(false);
     const [bulkText, setBulkText] = useState('');
 
+    if (!isBulkEdit && !readonlyKey) {
+        if (rows.length === 0 || rows[rows.length - 1].key) {
+            rows.push({ id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', value: '', description: '', enabled: true });
+        }
+    }
+
     const update = (id: string, field: keyof KeyValueRow, value: KeyValueRow[keyof KeyValueRow]) => {
         const next: KeyValueRow[] = rows.map((r) => (r.id === id ? { ...r, [field]: value } : r));
         if (!readonlyKey) {
             const last = next[next.length - 1];
             if (last && (last.key || last.value)) {
                 next.push({
-                    id: `kv-${Date.now()}-${Math.random()}`,
+                    id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
                     key: '',
                     value: '',
                     description: '',
@@ -47,7 +53,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
 
     const remove = (id: string) => {
         let next = rows.filter((r) => r.id !== id);
-        if (next.length === 0) next = [{ id: `kv-${Date.now()}`, key: '', value: '', description: '', enabled: true }];
+        if (next.length === 0) next = [{ id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', value: '', description: '', enabled: true }];
         onChange(next);
     };
 
@@ -83,7 +89,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
                 return { id: `kv-bulk-${i}`, key, value, description: '', enabled };
             });
             if (newRows.length === 0 || newRows[newRows.length - 1].key) {
-                newRows.push({ id: `kv-bulk-empty`, key: '', value: '', description: '', enabled: true });
+                newRows.push({ id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', value: '', description: '', enabled: true });
             }
             onChange(newRows);
         }
