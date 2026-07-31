@@ -65,11 +65,14 @@ func main() {
 		environmentUsecase: environmentUsecase,
 	})
 
+	menu := NewMenu()
+
 	// Create application with options
 	err = wails.Run(&options.App{
 		Title:            "PaperJet",
 		Width:            1024,
 		Height:           768,
+		Menu:             menu,
 		WindowStartState: options.Maximised,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
