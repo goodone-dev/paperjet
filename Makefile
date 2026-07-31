@@ -42,7 +42,7 @@ run:
 build:
 	@wails build
 
-module:
+gen-module:
 	@wails generate module
 
 gen-repo:
@@ -60,7 +60,7 @@ help:
 	@echo "Development targets:"
 	@echo "  run                                               Run application"
 	@echo "  build                                             Build application"
-	@echo "  module                                            Generate module"
+	@echo "  gen-module                                        Generate module"
 	@echo ""
 	@echo "Layer generation targets:"
 	@echo "  gen-repo NAME=<name>                              Generate repository layer"
@@ -80,7 +80,7 @@ help:
 
 .PHONY: help setup \
 		install-test-coverage install-migrate install-mockery install-pre-commit \
-		run build module \
+		run build gen-module \
 		gen-repo gen-usecase \
 		db-migrate-new db-migrate-up db-migrate-down \
 		test \
