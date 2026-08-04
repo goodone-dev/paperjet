@@ -17,12 +17,12 @@ interface BodyEditorProps {
 
 export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVariables = [] }) => {
     const types = [
-        { id: 'none', label: 'none' },
-        { id: 'form-data', label: 'form-data' },
-        { id: 'x-www-form-urlencoded', label: 'x-www-form-urlencoded' },
-        { id: 'raw', label: 'raw' },
-        { id: 'binary', label: 'binary' },
-        { id: 'graphql', label: 'GraphQL' },
+        { id: 'none', label: 'none', disabled: false },
+        { id: 'form-data', label: 'form-data', disabled: false },
+        { id: 'x-www-form-urlencoded', label: 'x-www-form-urlencoded', disabled: false },
+        { id: 'raw', label: 'raw', disabled: false },
+        { id: 'binary', label: 'binary', disabled: false },
+        { id: 'graphql', label: 'GraphQL', disabled: true },
     ] as const;
 
     return (
@@ -39,7 +39,7 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
                             htmlFor={`bt-${t.id}`}
                             className="flex items-center gap-2 cursor-pointer text-[13px] text-foreground"
                         >
-                            <RadioGroupItem value={t.id} id={`bt-${t.id}`} />
+                            <RadioGroupItem value={t.id} id={`bt-${t.id}`} disabled={t.disabled} />
                             {t.label}
                         </label>
                     ))}

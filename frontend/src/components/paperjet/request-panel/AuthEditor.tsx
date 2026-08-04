@@ -30,7 +30,7 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({ auth, onChange, envVaria
                             <SelectItem value="bearer">Bearer Token</SelectItem>
                             <SelectItem value="basic">Basic Auth</SelectItem>
                             <SelectItem value="apikey">API Key</SelectItem>
-                            <SelectItem value="oauth2">OAuth 2.0</SelectItem>
+                            <SelectItem value="oauth2" disabled="true">OAuth 2.0</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
