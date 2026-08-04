@@ -347,6 +347,7 @@ type ProxyPayload struct {
 	Method  string            `json:"method"`
 	Headers map[string]string `json:"headers"`
 	Body    string            `json:"body"`
+	Files   map[string]string `json:"files"`
 }
 
 type ProxyResponse struct {
@@ -358,12 +359,19 @@ type ProxyResponse struct {
 
 func (a *App) SendRequest(payload ProxyPayload) (*ProxyResponse, error) {
 	client := resty.New()
+	// client.Debug = true
+
 	req := client.R()
 	for k, v := range payload.Headers {
 		req.SetHeader(k, v)
 	}
+
 	if payload.Body != "" {
 		req.SetBody(payload.Body)
+	}
+
+	for k, v := range payload.Files {
+		req.SetFile(k, v)
 	}
 
 	resp, err := req.Execute(payload.Method, payload.URL)

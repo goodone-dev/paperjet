@@ -697,6 +697,7 @@ export namespace main {
 	    method: string;
 	    headers: Record<string, string>;
 	    body: string;
+	    files: Record<string, string>;
 	
 	    static createFrom(source: any = {}) {
 	        return new ProxyPayload(source);
@@ -708,6 +709,7 @@ export namespace main {
 	        this.method = source["method"];
 	        this.headers = source["headers"];
 	        this.body = source["body"];
+	        this.files = source["files"];
 	    }
 	}
 	export class ProxyResponse {

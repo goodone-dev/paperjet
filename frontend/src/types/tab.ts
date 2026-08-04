@@ -8,11 +8,16 @@ export interface RequestTabSnapshot {
     params: KeyValueRow[];
     pathVariables: KeyValueRow[];
     headers: KeyValueRow[];
-    body: string;
     bodyType: 'none' | 'raw' | 'form-data' | 'x-www-form-urlencoded' | 'binary' | 'graphql';
+    bodyRaw: BodyRaw | null;
     bodyFormData: KeyValueRow[];
     bodyUrlEncoded: KeyValueRow[];
     auth: AuthConfig;
+}
+
+export interface BodyRaw {
+    type: 'json' | 'xml' | 'html' | 'text';
+    value: string;
 }
 
 export interface RequestTab {
@@ -27,8 +32,8 @@ export interface RequestTab {
     params: KeyValueRow[];
     pathVariables: KeyValueRow[];
     headers: KeyValueRow[];
-    body: string;
     bodyType: 'none' | 'raw' | 'form-data' | 'x-www-form-urlencoded' | 'binary' | 'graphql';
+    bodyRaw: BodyRaw | null;
     bodyFormData: KeyValueRow[];
     bodyUrlEncoded: KeyValueRow[];
     auth: AuthConfig;

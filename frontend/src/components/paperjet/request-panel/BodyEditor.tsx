@@ -6,7 +6,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Code2 } from 'lucide-react';
 import { KeyValueEditor } from '../KeyValueEditor';
 import { EnvTextarea } from '../EnvAutocomplete';
-import type { RequestTab } from '@/types/tab';
+import type { BodyRaw, RequestTab } from '@/types/tab';
 import type { EnvVariable } from '@/types/environment';
 
 interface BodyEditorProps {
@@ -45,7 +45,10 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
                     ))}
                     <div className="ml-auto flex items-center gap-2">
                         {request.bodyType === 'raw' && (
-                            <Select defaultValue="json">
+                            <Select
+                                defaultValue={request.bodyRaw?.type || 'json'}
+                                onValueChange={(value: string) => update({ bodyRaw: { ...request.bodyRaw, type: value as BodyRaw['type'] } as BodyRaw })}
+                            >
                                 <SelectTrigger className="h-7 text-xs w-28 bg-card">
                                     <SelectValue />
                                 </SelectTrigger>
@@ -76,8 +79,8 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
                     </div>
                     <EnvTextarea
                         envVariables={envVariables}
-                        value={request.body}
-                        onChange={(e) => update({ body: e.target.value })}
+                        value={request.bodyRaw?.value}
+                        onChange={(e) => update({ bodyRaw: { ...request.bodyRaw, value: e.target.value } as BodyRaw })}
                         spellCheck={false}
                         className="min-h-[260px] mono text-sm border-0 rounded-none focus-visible:ring-0 bg-card resize-none leading-relaxed w-full p-3 outline-none"
                     />

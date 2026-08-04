@@ -1,5 +1,5 @@
 import type { BackendKeyValue, KeyValueRow, AuthConfig, BodyConfig } from '@/types/collection';
-import type { RequestTab } from '@/types/tab';
+import type { BodyRaw, RequestTab } from '@/types/tab';
 import type { EnvVariable } from '@/types/environment';
 import type { HistoryEntry } from '@/types/history';
 import type { WireRequestResponse } from './api';
@@ -53,8 +53,8 @@ export function mapBackendRequestToTab(full: WireRequestResponse, meta: OpenRequ
             { id: 'h1', key: 'Accept', value: 'application/json', description: '', enabled: true },
             { id: 'h2', key: '', value: '', description: '', enabled: true },
         ]),
-        body: body?.raw?.value || '',
         bodyType: body?.type || 'none',
+        bodyRaw: { type: body?.raw?.type || 'json', value: body?.raw?.value } as BodyRaw,
         bodyFormData: mapBackendKvsToRows(body?.form_data, 'f', [
             { id: 'f1', key: '', value: '', description: '', enabled: true },
         ]),
@@ -87,8 +87,8 @@ export function mapHistoryEntryToTab(entry: HistoryEntry): Partial<RequestTab> {
             { id: 'h1', key: 'Accept', value: 'application/json', description: '', enabled: true },
             { id: 'h2', key: '', value: '', description: '', enabled: true },
         ]),
-        body: body?.raw?.value || '',
         bodyType: body?.type || 'none',
+        bodyRaw: { type: body?.raw?.type || 'json', value: body?.raw?.value } as BodyRaw,
         bodyFormData: mapBackendKvsToRows(body?.form_data, 'f', [
             { id: 'f1', key: '', value: '', description: '', enabled: true },
         ]),
@@ -119,9 +119,9 @@ function tabAuthToBackend(auth: AuthConfig | undefined): AuthConfig {
     return base;
 }
 
-function tabBodyToBackend(tab: Pick<RequestTab, 'bodyType' | 'body' | 'bodyFormData' | 'bodyUrlEncoded'>): BodyConfig {
+function tabBodyToBackend(tab: Pick<RequestTab, 'bodyType' | 'bodyRaw' | 'bodyFormData' | 'bodyUrlEncoded'>): BodyConfig {
     const body: any = { type: tab.bodyType || 'none' };
-    if (tab.bodyType === 'raw') body.raw = { type: 'json', value: tab.body || '' };
+    if (tab.bodyType === 'raw') body.raw = { type: tab.bodyRaw?.type, value: tab.bodyRaw?.value };
     if (tab.bodyType === 'form-data') body.form_data = rowsToBackendKvs(tab.bodyFormData);
     if (tab.bodyType === 'x-www-form-urlencoded') body.url_encoded = rowsToBackendKvs(tab.bodyUrlEncoded);
     return body;
@@ -176,15 +176,42 @@ export function buildRequestPayload(tab: RequestTab, envVars: EnvVariable[]): Se
             return acc;
         }, {});
 
-    let bodyData = tab.bodyType !== 'none' ? resolve(tab.body || '') : '';
+    // TODO: Binary and GraphQL Implementation
 
-    if (tab.bodyType === 'x-www-form-urlencoded') {
+    let bodyForm: KeyValueRow[] = []
+    switch (tab.bodyType) {
+        case 'form-data':
+            bodyForm = tab.bodyFormData || []
+            headers['Content-Type'] = 'multipart/form-data';
+            break;
+        case 'x-www-form-urlencoded':
+            bodyForm = tab.bodyUrlEncoded || []
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            break;
+    }
+
+    switch (tab.bodyRaw?.type) {
+        case 'json':
+            headers['Content-Type'] = 'application/json';
+            break;
+        case 'xml':
+            headers['Content-Type'] = 'application/xml';
+            break;
+        case 'html':
+            headers['Content-Type'] = 'text/html';
+            break;
+        case 'text':
+            headers['Content-Type'] = 'text/plain';
+            break;
+    }
+
+    let bodyData: string = ''
+    if (tab.bodyType === 'raw') {
+        bodyData = resolve(tab.bodyRaw?.value || '')
+    } else if (tab.bodyType.includes('form')) {
         const searchParams = new URLSearchParams();
-        (tab.bodyUrlEncoded || [])
-            .filter((h) => h.enabled && h.key)
-            .forEach((h) => searchParams.append(resolve(h.key), resolve(h.value)));
-        bodyData = searchParams.toString();
-        headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        bodyForm.filter((h) => h.enabled && h.key).forEach((h) => searchParams.append(resolve(h.key), resolve(h.value)));
+        bodyData = searchParams.toString()
     }
 
     let finalUrl = resolve(tab.url || '');
@@ -194,6 +221,7 @@ export function buildRequestPayload(tab: RequestTab, envVars: EnvVariable[]): Se
             finalUrl = finalUrl.replace(new RegExp(`:${p.key}\\b`, 'g'), encodeURIComponent(resolve(p.value)));
         });
 
+    // TODO: OAuth Implementation
     const auth: any = tab.auth || { type: 'none' };
     if (auth.type === 'bearer' && auth.token) {
         headers['Authorization'] = `Bearer ${resolve(auth.token)}`;
