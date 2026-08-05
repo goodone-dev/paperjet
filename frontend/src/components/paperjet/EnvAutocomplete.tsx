@@ -1,6 +1,15 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import CodeMirror from '@uiw/react-codemirror';
+import { useTheme } from 'next-themes';
+import { keymap } from '@codemirror/view';
+import { json } from '@codemirror/lang-json';
+import { xml } from '@codemirror/lang-xml';
+import { html } from '@codemirror/lang-html';
 import type { EnvVariable } from '@/types/environment';
+import type { ViewUpdate } from '@codemirror/view';
+import type { ReactCodeMirrorRef } from '@uiw/react-codemirror';
+import type { BodyRaw } from '@/types/tab';
 
 interface DropdownPos {
     top: number;
@@ -200,11 +209,10 @@ export const EnvDropdown: React.FC<EnvDropdownProps> = ({ dropdownRef, open, fil
                             e.preventDefault();
                             onSelect(v.key);
                         }}
-                        className={`w-full text-left flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
-                            i === activeIndex
-                                ? 'bg-primary/15 text-foreground'
-                                : 'hover:bg-secondary/60 text-foreground'
-                        }`}
+                        className={`w-full text-left flex items-center gap-3 px-3 py-2 text-sm transition-colors ${i === activeIndex
+                            ? 'bg-primary/15 text-foreground'
+                            : 'hover:bg-secondary/60 text-foreground'
+                            }`}
                     >
                         <span className="mono text-[13px] font-medium text-primary truncate flex-shrink-0 max-w-[40%]">
                             {v.key}
@@ -294,6 +302,180 @@ export const EnvTextarea: React.FC<EnvTextareaProps> = ({ envVariables, onChange
             <EnvDropdown
                 dropdownRef={dropdownRef}
                 open={open}
+                filtered={filtered}
+                activeIndex={activeIndex}
+                onSelect={commitSelection}
+                pos={dropdownPos}
+            />
+        </>
+    );
+};
+
+export interface EnvCodeMirrorProps {
+    raw?: BodyRaw | null;
+    onChange?: (value: string) => void;
+    envVariables?: EnvVariable[];
+    className?: string;
+    height?: string;
+}
+
+export const EnvCodeMirror: React.FC<EnvCodeMirrorProps> = ({
+    raw,
+    onChange,
+    envVariables = [],
+    className,
+    height
+}) => {
+    const { theme } = useTheme();
+    const editorRef = useRef<ReactCodeMirrorRef>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState('');
+    const [activeIndex, setActiveIndex] = useState(0);
+    const [dropdownPos, setDropdownPos] = useState<DropdownPos>({ top: 0, left: 0, width: 0 });
+
+    const filtered = (envVariables || []).filter(
+        (v) => v.key && (!query || v.key.toLowerCase().includes(query.toLowerCase())),
+    );
+
+    const commitSelection = useCallback((key: string) => {
+        const view = editorRef.current?.view;
+        if (!view) return;
+        const pos = view.state.selection.main.head;
+        const line = view.state.doc.lineAt(pos);
+        const textBefore = line.text.slice(0, pos - line.from);
+
+        const matchIdx = textBefore.lastIndexOf('{{');
+        if (matchIdx !== -1) {
+            const from = line.from + matchIdx;
+            const to = pos;
+            const insertText = `{{${key}`;
+            view.dispatch({
+                changes: { from, to, insert: insertText },
+                selection: { anchor: from + insertText.length }
+            });
+            view.focus();
+        }
+        setOpen(false);
+    }, []);
+
+    const customKeymap = React.useMemo(() => keymap.of([
+        {
+            key: 'ArrowDown',
+            run: () => {
+                if (!open) return false;
+                setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+                return true;
+            }
+        },
+        {
+            key: 'ArrowUp',
+            run: () => {
+                if (!open) return false;
+                setActiveIndex((i) => Math.max(i - 1, 0));
+                return true;
+            }
+        },
+        {
+            key: 'Enter',
+            run: () => {
+                if (!open) return false;
+                if (filtered[activeIndex]) {
+                    commitSelection(filtered[activeIndex].key);
+                }
+                return true;
+            }
+        },
+        {
+            key: 'Escape',
+            run: () => {
+                if (!open) return false;
+                setOpen(false);
+                return true;
+            }
+        }
+    ]), [open, filtered, activeIndex, commitSelection]);
+
+    const getExtensions = () => {
+        const type = raw?.type || 'json';
+        switch (type) {
+            case 'json': return [json()];
+            case 'xml': return [xml()];
+            case 'html': return [html()];
+            default: return [];
+        }
+    };
+
+    const handleUpdate = useCallback((viewUpdate: ViewUpdate) => {
+        if (!viewUpdate.docChanged && !viewUpdate.selectionSet) return;
+
+        const view = viewUpdate.view;
+        const pos = view.state.selection.main.head;
+        const line = view.state.doc.lineAt(pos);
+        const textBefore = line.text.slice(0, pos - line.from);
+
+        const matchIdx = textBefore.lastIndexOf('{{');
+        if (matchIdx !== -1) {
+            const between = textBefore.slice(matchIdx + 2);
+            if (!between.includes('}}')) {
+                setQuery(between);
+                setActiveIndex(0);
+
+                const coords = view.coordsAtPos(pos);
+                if (coords) {
+                    setDropdownPos({
+                        top: coords.bottom + window.scrollY + 4,
+                        left: coords.left + window.scrollX,
+                        width: 240,
+                    });
+                }
+                setOpen(true);
+                return;
+            }
+        }
+        setOpen(false);
+    }, []);
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: MouseEvent) => {
+            const target = e.target as Node | null;
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(target) &&
+                !(editorRef.current?.view?.dom.contains(target))
+            ) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+
+    useEffect(() => {
+        if (!open || !dropdownRef.current) return;
+        const active = dropdownRef.current.querySelector('[data-active="true"]');
+        active?.scrollIntoView({ block: 'nearest' });
+    }, [activeIndex, open]);
+
+    const allExtensions = [customKeymap, ...getExtensions()];
+
+    return (
+        <>
+            <CodeMirror
+                ref={editorRef}
+                value={raw?.value}
+                height={height}
+                extensions={allExtensions}
+                theme={theme === 'dark' ? 'dark' : 'light'}
+                onChange={(val) => onChange?.(val)}
+                onUpdate={handleUpdate}
+                className={className}
+            />
+            <EnvDropdown
+                dropdownRef={dropdownRef}
+                open={open && filtered.length > 0}
                 filtered={filtered}
                 activeIndex={activeIndex}
                 onSelect={commitSelection}

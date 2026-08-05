@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Code2 } from 'lucide-react';
 import { KeyValueEditor } from '../KeyValueEditor';
-import { EnvTextarea } from '../EnvAutocomplete';
+import { EnvCodeMirror } from '../EnvAutocomplete';
+import { beautify } from '@/lib/raw-beautifier';
 import type { BodyRaw, RequestTab } from '@/types/tab';
 import type { EnvVariable } from '@/types/environment';
 
@@ -24,6 +25,13 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
         { id: 'binary', label: 'binary', disabled: false },
         { id: 'graphql', label: 'GraphQL', disabled: true },
     ] as const;
+
+    const handleBeautify = useCallback(() => {
+        if (request.bodyType !== 'raw' || !request.bodyRaw?.value) return;
+
+        const beautified = beautify(request.bodyRaw.type || 'json', request.bodyRaw.value);
+        update({ bodyRaw: { ...request.bodyRaw, value: beautified } as BodyRaw });
+    }, [request.bodyType, request.bodyRaw, update]);
 
     return (
         <div>
@@ -60,7 +68,7 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
                                 </SelectContent>
                             </Select>
                         )}
-                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBeautify}>
                             <Code2 className="h-3.5 w-3.5" /> Beautify
                         </Button>
                     </div>
@@ -75,14 +83,16 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
             {request.bodyType === 'raw' && (
                 <div className="rounded-lg border border-border bg-card overflow-hidden">
                     <div className="flex bg-secondary/50 border-b border-border">
-                        <div className="px-3 py-2 text-[11px] text-muted-foreground mono uppercase tracking-wider font-semibold">JSON</div>
+                        <div className="px-3 py-2 text-[11px] text-muted-foreground mono uppercase tracking-wider font-semibold">
+                            {request.bodyRaw?.type || 'json'}
+                        </div>
                     </div>
-                    <EnvTextarea
+                    <EnvCodeMirror
+                        raw={request.bodyRaw}
+                        height="260px"
                         envVariables={envVariables}
-                        value={request.bodyRaw?.value}
-                        onChange={(e) => update({ bodyRaw: { ...request.bodyRaw, value: e.target.value } as BodyRaw })}
-                        spellCheck={false}
-                        className="min-h-[260px] mono text-sm border-0 rounded-none focus-visible:ring-0 bg-card resize-none leading-relaxed w-full p-3 outline-none"
+                        onChange={(value) => update({ bodyRaw: { ...request.bodyRaw, value } as BodyRaw })}
+                        className="text-sm border-0 bg-card outline-none"
                     />
                 </div>
             )}
