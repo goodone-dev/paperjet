@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Copy, Download, Search, Maximize2, WrapText, Inbox } from 'lucide-react';
+import { Copy, Check, Download, Search, Maximize2, WrapText, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { tokenizeJSON } from '@/lib/json-format';
 import type { ResponseData, ResponseKeyValue } from '@/types/response';
@@ -23,6 +23,15 @@ interface ResponsePanelProps {
 }
 
 export const ResponsePanel: React.FC<ResponsePanelProps> = ({ response, isSending }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        if (!response?.body) return;
+        navigator.clipboard.writeText(response.body);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
     if (isSending) {
         return (
             <div className="h-full flex flex-col items-center justify-center bg-card/40">
@@ -92,8 +101,9 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({ response, isSendin
                     <span className="text-xs font-semibold text-primary mono">{formatSize(response.size)}</span>
                 </div>
                 <div className="ml-auto flex items-center gap-1">
-                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5">
-                        <Copy className="h-3.5 w-3.5" /> Copy
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={handleCopy}>
+                        {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied ? 'Copied' : 'Copy'}
                     </Button>
                     <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5">
                         <Download className="h-3.5 w-3.5" /> Save
