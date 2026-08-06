@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { TopBar } from '@/components/paperjet/TopBar';
 import { Sidebar } from '@/components/paperjet/Sidebar';
 import { RequestTabsBar } from '@/components/paperjet/RequestTabsBar';
@@ -18,7 +18,7 @@ import { useRequestSend } from '@/hooks/useRequestSend';
 import { useRequestSave } from '@/hooks/useRequestSave';
 import { useEnvironmentTabSync } from '@/hooks/useEnvironmentTabSync';
 import { useCollectionTabSync } from '@/hooks/useCollectionTabSync';
-import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
+import { PanelGroup, Panel, PanelResizeHandle, type ImperativePanelHandle } from 'react-resizable-panels';
 import { cn } from '@/lib/utils';
 import { GetRequest } from '@/lib/api';
 import { mapBackendRequestToTab, mapHistoryEntryToTab } from '@/lib/request-mapper';
@@ -50,6 +50,19 @@ export default function AppWorkspace() {
     const [move, setMove] = useState<MoveState>({ open: false, col: null });
     const [saveRequest, setSaveRequest] = useState<SaveRequestState>({ open: false, config: null });
     const [activeView, setActiveView] = useState('collections');
+    const [isResponseMaximized, setIsResponseMaximized] = useState(false);
+    const requestPanelRef = useRef<ImperativePanelHandle>(null);
+
+    useEffect(() => {
+        const panel = requestPanelRef.current;
+        if (!panel) return;
+
+        if (isResponseMaximized) {
+            if (!panel.isCollapsed()) panel.collapse();
+        } else {
+            if (panel.isCollapsed()) panel.expand();
+        }
+    }, [isResponseMaximized]);
 
     const openConfirm = useCallback((config: ConfirmDialogConfig) => setConfirm({ open: true, config }), []);
 
@@ -271,7 +284,12 @@ export default function AppWorkspace() {
 
                         {activeTab?.type === 'request' && (
                             <PanelGroup direction="vertical" className="flex-1 min-h-0">
-                                <Panel defaultSize={55} minSize={25}>
+                                <Panel
+                                    ref={requestPanelRef}
+                                    defaultSize={55}
+                                    minSize={25}
+                                    collapsible={true}
+                                >
                                     <RequestPanel
                                         request={activeTab as RequestTab}
                                         onUpdate={updateTab}
@@ -281,11 +299,13 @@ export default function AppWorkspace() {
                                         envVariables={activeEnvVars}
                                     />
                                 </Panel>
-                                <ResizeHandle horizontal />
+                                <ResizeHandle horizontal className={cn(isResponseMaximized && 'hidden')} />
                                 <Panel defaultSize={45} minSize={20}>
                                     <ResponsePanel
                                         response={(activeTab as RequestTab).response}
                                         isSending={(activeTab as RequestTab).isSending}
+                                        isMaximized={isResponseMaximized}
+                                        onToggleMaximize={() => setIsResponseMaximized((prev) => !prev)}
                                     />
                                 </Panel>
                             </PanelGroup>
@@ -333,11 +353,12 @@ export default function AppWorkspace() {
     );
 }
 
-const ResizeHandle: React.FC<{ horizontal?: boolean }> = ({ horizontal = false }) => (
+const ResizeHandle: React.FC<{ horizontal?: boolean; className?: string }> = ({ horizontal = false, className }) => (
     <PanelResizeHandle
         className={cn(
             'group relative bg-border/40 hover:bg-primary/40 transition-colors',
             horizontal ? 'h-px w-full' : 'w-px h-full',
+            className,
         )}
     >
         <div

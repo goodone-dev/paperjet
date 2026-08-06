@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Copy, Check, Download, Search, Maximize2, WrapText, Inbox } from 'lucide-react';
+import { Copy, Check, Download, Search, Maximize2, Minimize2, WrapText, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { tokenizeJSON } from '@/lib/json-format';
 import type { ResponseData, ResponseKeyValue } from '@/types/response';
@@ -20,9 +20,16 @@ function getStatusKind(status: number): StatusKind {
 interface ResponsePanelProps {
     response: ResponseData | null;
     isSending: boolean;
+    isMaximized?: boolean;
+    onToggleMaximize?: () => void;
 }
 
-export const ResponsePanel: React.FC<ResponsePanelProps> = ({ response, isSending }) => {
+export const ResponsePanel: React.FC<ResponsePanelProps> = ({
+    response,
+    isSending,
+    isMaximized,
+    onToggleMaximize,
+}) => {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
@@ -108,8 +115,14 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({ response, isSendin
                     <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5">
                         <Download className="h-3.5 w-3.5" /> Save
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Maximize2 className="h-3.5 w-3.5" />
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={onToggleMaximize}
+                        title={isMaximized ? 'Restore request panel' : 'Maximize response panel'}
+                    >
+                        {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                     </Button>
                 </div>
             </div>
