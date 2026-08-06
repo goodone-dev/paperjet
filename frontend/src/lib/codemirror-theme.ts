@@ -1,5 +1,5 @@
-import { EditorView, keymap } from '@codemirror/view';
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { EditorView } from '@codemirror/view';
+import { HighlightStyle } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 
 export const lightSyntax = HighlightStyle.define([

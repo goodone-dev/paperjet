@@ -13,6 +13,7 @@ import type { BodyRaw } from '@/types/tab';
 import { darkEditorTheme, darkSyntax, lightEditorTheme, lightSyntax } from '@/lib/codemirror-theme';
 import { EditorView, keymap } from '@codemirror/view';
 import { syntaxHighlighting } from '@codemirror/language';
+import { Prec } from '@codemirror/state';
 
 interface DropdownPos {
     top: number;
@@ -354,12 +355,20 @@ export const EnvCodeMirror = forwardRef<ReactCodeMirrorRef, EnvCodeMirrorProps>(
         const pos = view.state.selection.main.head;
         const line = view.state.doc.lineAt(pos);
         const textBefore = line.text.slice(0, pos - line.from);
+        const textAfter = line.text.slice(pos - line.from);
 
         const matchIdx = textBefore.lastIndexOf('{{');
         if (matchIdx !== -1) {
             const from = line.from + matchIdx;
-            const to = pos;
-            const insertText = `{{${key}`;
+            let to = pos;
+            
+            if (textAfter.startsWith('}}')) {
+                to += 2;
+            } else if (textAfter.startsWith('}')) {
+                to += 1;
+            }
+
+            const insertText = `{{${key}}}`;
             view.dispatch({
                 changes: { from, to, insert: insertText },
                 selection: { anchor: from + insertText.length }
@@ -369,7 +378,7 @@ export const EnvCodeMirror = forwardRef<ReactCodeMirrorRef, EnvCodeMirrorProps>(
         setOpen(false);
     }, []);
 
-    const customKeymap = React.useMemo(() => keymap.of([
+    const customKeymap = React.useMemo(() => Prec.highest(keymap.of([
         {
             key: 'ArrowDown',
             run: () => {
@@ -404,7 +413,7 @@ export const EnvCodeMirror = forwardRef<ReactCodeMirrorRef, EnvCodeMirrorProps>(
                 return true;
             }
         }
-    ]), [open, filtered, activeIndex, commitSelection]);
+    ])), [open, filtered, activeIndex, commitSelection]);
 
     const getExtensions = () => {
         const type = data?.type || 'text';

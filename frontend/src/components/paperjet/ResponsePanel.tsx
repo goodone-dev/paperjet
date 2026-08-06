@@ -198,7 +198,7 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
                     </div>
                 </div>
 
-                <TabsContent value="body" className="flex-1 mt-0 min-h-0 flex flex-col">
+                <TabsContent value="body" className="flex-1 mt-0 min-h-0 data-[state=active]:flex flex-col">
                     <EnvCodeMirror
                         ref={editorRef}
                         data={{ value: response.body, type: bodyType }}
