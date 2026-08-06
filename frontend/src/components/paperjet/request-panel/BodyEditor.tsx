@@ -88,7 +88,7 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
                         </div>
                     </div>
                     <EnvCodeMirror
-                        raw={request.bodyRaw}
+                        data={request.bodyRaw}
                         height="260px"
                         envVariables={envVariables}
                         onChange={(value) => update({ bodyRaw: { ...request.bodyRaw, value } as BodyRaw })}

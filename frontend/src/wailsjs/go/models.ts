@@ -716,6 +716,7 @@ export namespace main {
 	    status: number;
 	    statusText: string;
 	    headers: Record<string, string>;
+	    cookies: Record<string, string>;
 	    body: string;
 	
 	    static createFrom(source: any = {}) {
@@ -727,6 +728,7 @@ export namespace main {
 	        this.status = source["status"];
 	        this.statusText = source["statusText"];
 	        this.headers = source["headers"];
+	        this.cookies = source["cookies"];
 	        this.body = source["body"];
 	    }
 	}

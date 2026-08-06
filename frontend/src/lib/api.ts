@@ -91,6 +91,7 @@ export interface WireProxyResponse {
     status: number;
     statusText: string;
     headers: Record<string, string>;
+    cookies: Record<string, string>;
     body: string;
 }
 

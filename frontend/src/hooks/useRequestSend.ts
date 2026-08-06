@@ -47,6 +47,7 @@ export function useRequestSend(
                 time: elapsed,
                 size: new Blob([res.body || '']).size,
                 headers: Object.entries(res.headers || {}).map(([key, value]) => ({ key, value })),
+                cookies: Object.entries(res.cookies || {}).map(([key, value]) => ({ key, value })),
                 body: res.body,
                 error: false,
             };
@@ -61,6 +62,7 @@ export function useRequestSend(
                 time: 0,
                 size: 0,
                 headers: [],
+                cookies: [],
                 body: '{\n  "error": "' + (err?.message || err) + '"\n}',
                 error: true,
             };

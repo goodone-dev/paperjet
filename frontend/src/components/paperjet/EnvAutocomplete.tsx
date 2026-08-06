@@ -312,19 +312,21 @@ export const EnvTextarea: React.FC<EnvTextareaProps> = ({ envVariables, onChange
 };
 
 export interface EnvCodeMirrorProps {
-    raw?: BodyRaw | null;
+    data?: BodyRaw | null;
     onChange?: (value: string) => void;
     envVariables?: EnvVariable[];
     className?: string;
     height?: string;
+    readonly?: boolean;
 }
 
 export const EnvCodeMirror: React.FC<EnvCodeMirrorProps> = ({
-    raw,
+    data,
     onChange,
     envVariables = [],
     className,
-    height
+    height,
+    readonly = false,
 }) => {
     const { theme } = useTheme();
     const editorRef = useRef<ReactCodeMirrorRef>(null);
@@ -398,7 +400,7 @@ export const EnvCodeMirror: React.FC<EnvCodeMirrorProps> = ({
     ]), [open, filtered, activeIndex, commitSelection]);
 
     const getExtensions = () => {
-        const type = raw?.type || 'json';
+        const type = data?.type || 'text';
         switch (type) {
             case 'json': return [json()];
             case 'xml': return [xml()];
@@ -465,13 +467,14 @@ export const EnvCodeMirror: React.FC<EnvCodeMirrorProps> = ({
         <>
             <CodeMirror
                 ref={editorRef}
-                value={raw?.value}
+                value={data?.value}
                 height={height}
                 extensions={allExtensions}
                 theme={theme === 'dark' ? 'dark' : 'light'}
                 onChange={(val) => onChange?.(val)}
                 onUpdate={handleUpdate}
                 className={className}
+                readOnly={readonly}
             />
             <EnvDropdown
                 dropdownRef={dropdownRef}

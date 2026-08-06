@@ -5,7 +5,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Copy, Download, Search, Maximize2, WrapText, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { tokenizeJSON } from '@/lib/json-format';
-import type { ResponseData, ResponseHeader } from '@/types/response';
+import type { ResponseData, ResponseKeyValue } from '@/types/response';
+import { EnvCodeMirror } from './EnvAutocomplete';
 
 type StatusKind = 'success' | 'warning' | 'error' | 'info';
 
@@ -108,7 +109,7 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({ response, isSendin
                     <TabsList className="bg-transparent p-0 h-10 gap-1">
                         {[
                             { id: 'body', label: 'Body', count: 0, disabled: false },
-                            { id: 'cookies', label: 'Cookies', count: 0, disabled: false },
+                            { id: 'cookies', label: 'Cookies', count: response.cookies.length, disabled: false },
                             { id: 'headers', label: 'Headers', count: response.headers.length, disabled: false },
                             { id: 'tests', label: 'Test Results', count: 0, disabled: true },
                         ].map((t) => (
@@ -134,15 +135,25 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({ response, isSendin
                 </div>
 
                 <TabsContent value="body" className="flex-1 mt-0 min-h-0">
-                    <JSONViewer code={response.body} />
+                    <ScrollArea className="h-full">
+                        <EnvCodeMirror
+                            data={{ value: response.body, type: 'json' }}
+                            className="text-sm border-0 bg-card outline-none"
+                            readonly={true}
+                        />
+                    </ScrollArea>
                 </TabsContent>
                 <TabsContent value="headers" className="flex-1 mt-0 min-h-0">
-                    <HeadersTable headers={response.headers} />
+                    <KeyValueTable data={response.headers} />
                 </TabsContent>
-                <TabsContent value="cookies" className="flex-1 mt-0 min-h-0 p-5">
-                    <div className="rounded-lg border border-dashed border-border bg-secondary/40 p-12 text-center">
-                        <p className="text-sm text-muted-foreground">No cookies were returned.</p>
-                    </div>
+                <TabsContent value="cookies" className="flex-1 mt-0 min-h-0">
+                    {response.cookies.length === 0 ? (
+                        <div className="m-5 rounded-lg border border-dashed border-border bg-secondary/40 p-12 text-center">
+                            <p className="text-sm text-muted-foreground">No cookies were returned.</p>
+                        </div>
+                    ) : (
+                        <KeyValueTable data={response.cookies} />
+                    )}
                 </TabsContent>
                 <TabsContent value="tests" className="flex-1 mt-0 min-h-0 p-5">
                     <TestResults />
@@ -218,7 +229,7 @@ const JSONViewer: React.FC<{ code: string }> = ({ code }) => {
     );
 };
 
-const HeadersTable: React.FC<{ headers: ResponseHeader[] }> = ({ headers }) => (
+const KeyValueTable: React.FC<{ data: ResponseKeyValue[] }> = ({ data }) => (
     <ScrollArea className="h-full">
         <div className="p-5">
             <div className="rounded-lg border border-border overflow-hidden bg-card">
@@ -227,7 +238,7 @@ const HeadersTable: React.FC<{ headers: ResponseHeader[] }> = ({ headers }) => (
                     <div className="px-4 py-2.5 border-l border-border">Value</div>
                 </div>
                 <div className="divide-y divide-border">
-                    {headers.map((h, i) => (
+                    {data.map((h, i) => (
                         <div key={`${h.key}-${i}`} className="grid grid-cols-2 hover:bg-secondary/30 transition-colors">
                             <div className="px-4 py-2.5 text-[13px] mono font-medium text-primary">{h.key}</div>
                             <div className="px-4 py-2.5 text-[13px] mono text-foreground/80 border-l border-border break-all">

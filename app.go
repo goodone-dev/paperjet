@@ -354,6 +354,7 @@ type ProxyResponse struct {
 	Status     int               `json:"status"`
 	StatusText string            `json:"statusText"`
 	Headers    map[string]string `json:"headers"`
+	Cookies    map[string]string `json:"cookies"`
 	Body       string            `json:"body"`
 }
 
@@ -386,12 +387,18 @@ func (a *App) SendRequest(payload ProxyPayload) (*ProxyResponse, error) {
 		}
 	}
 
+	cookies := make(map[string]string)
+	for _, cookie := range resp.Cookies() {
+		cookies[cookie.Name] = cookie.Value
+	}
+
 	logger.Debugf(a.ctx, "Request '%s %s' sent", payload.Method, payload.URL).Write()
 
 	return &ProxyResponse{
 		Status:     resp.StatusCode(),
 		StatusText: resp.Status(),
 		Headers:    headers,
+		Cookies:    cookies,
 		Body:       string(resp.Body()),
 	}, nil
 }

@@ -1,6 +1,6 @@
 import type { KeyValueRow } from './collection';
 
-export interface ResponseHeader {
+export interface ResponseKeyValue {
     key: string;
     value: string;
 }
@@ -10,7 +10,8 @@ export interface ResponseData {
     statusText: string;
     time: number;
     size: number;
-    headers: ResponseHeader[];
+    headers: ResponseKeyValue[];
+    cookies: ResponseKeyValue[];
     body: string;
     error: boolean;
 }
