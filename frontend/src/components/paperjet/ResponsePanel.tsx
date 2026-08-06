@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,6 +8,8 @@ import { tokenizeJSON } from '@/lib/json-format';
 import type { ResponseData, ResponseKeyValue } from '@/types/response';
 import { EnvCodeMirror } from './EnvAutocomplete';
 import { BodyRaw } from '@/types/tab';
+import { openSearchPanel } from '@codemirror/search';
+import type { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 
 type StatusKind = 'success' | 'warning' | 'error' | 'info';
 
@@ -48,11 +50,22 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
 }) => {
     const [copied, setCopied] = useState(false);
     const [formatMode, setFormatMode] = useState<string>('pretty');
+    const [wrapText, setWrapText] = useState(false);
+    const editorRef = useRef<ReactCodeMirrorRef>(null);
 
     const bodyType = useMemo(() => {
         if (formatMode === 'raw') return 'text';
         return getResponseContentType(response);
     }, [formatMode, response]);
+
+    const handleSearch = useCallback(() => {
+        const view = editorRef.current?.view;
+        if (view) openSearchPanel(view);
+    }, []);
+
+    const handleToggleWrap = useCallback(() => {
+        setWrapText((prev) => !prev);
+    }, []);
 
     const handleCopy = () => {
         if (!response?.body) return;
@@ -175,18 +188,25 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
                         ))}
                     </TabsList>
                     <div className="flex items-center gap-1">
-                        <ResponseFormatTabs active={formatMode} onChange={setFormatMode} />
+                        <ResponseFormatTabs
+                            active={formatMode}
+                            onChange={setFormatMode}
+                            onSearch={handleSearch}
+                            wrapText={wrapText}
+                            onToggleWrap={handleToggleWrap}
+                        />
                     </div>
                 </div>
 
-                <TabsContent value="body" className="flex-1 mt-0 min-h-0">
-                    <ScrollArea className="h-full">
-                        <EnvCodeMirror
-                            data={{ value: response.body, type: bodyType }}
-                            className="text-sm border-0 bg-card outline-none"
-                            readonly={true}
-                        />
-                    </ScrollArea>
+                <TabsContent value="body" className="flex-1 mt-0 min-h-0 flex flex-col">
+                    <EnvCodeMirror
+                        ref={editorRef}
+                        data={{ value: response.body, type: bodyType }}
+                        className="text-sm border-0 bg-card outline-none flex-1 min-h-0"
+                        height="100%"
+                        readonly={true}
+                        wrap={wrapText}
+                    />
                 </TabsContent>
                 <TabsContent value="headers" className="flex-1 mt-0 min-h-0">
                     <KeyValueTable data={response.headers} />
@@ -211,9 +231,18 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
 interface ResponseFormatTabsProps {
     active: string;
     onChange: (mode: string) => void;
+    onSearch?: () => void;
+    wrapText?: boolean;
+    onToggleWrap?: () => void;
 }
 
-const ResponseFormatTabs: React.FC<ResponseFormatTabsProps> = ({ active, onChange }) => {
+const ResponseFormatTabs: React.FC<ResponseFormatTabsProps> = ({
+    active,
+    onChange,
+    onSearch,
+    wrapText,
+    onToggleWrap,
+}) => {
     return (
         <div className="flex items-center gap-0 mr-2">
             {['pretty', 'raw', 'preview', 'visualize'].map((m) => (
@@ -229,10 +258,16 @@ const ResponseFormatTabs: React.FC<ResponseFormatTabsProps> = ({ active, onChang
                 </button>
             ))}
             <span className="mx-2 h-4 w-px bg-border" />
-            <Button variant="ghost" size="icon" className="h-7 w-7">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onSearch} title="Search (Ctrl/Cmd+F)">
                 <Search className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
+            <Button
+                variant="ghost"
+                size="icon"
+                className={cn('h-7 w-7 transition-colors', wrapText && 'text-primary bg-primary-soft')}
+                onClick={onToggleWrap}
+                title="Toggle line wrapping"
+            >
                 <WrapText className="h-3.5 w-3.5" />
             </Button>
         </div>

@@ -1,15 +1,18 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import CodeMirror from '@uiw/react-codemirror';
 import { useTheme } from 'next-themes';
-import { keymap } from '@codemirror/view';
 import { json } from '@codemirror/lang-json';
 import { xml } from '@codemirror/lang-xml';
 import { html } from '@codemirror/lang-html';
+import { search } from '@codemirror/search';
 import type { EnvVariable } from '@/types/environment';
 import type { ViewUpdate } from '@codemirror/view';
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import type { BodyRaw } from '@/types/tab';
+import { darkEditorTheme, darkSyntax, lightEditorTheme, lightSyntax } from '@/lib/codemirror-theme';
+import { EditorView, keymap } from '@codemirror/view';
+import { syntaxHighlighting } from '@codemirror/language';
 
 interface DropdownPos {
     top: number;
@@ -318,18 +321,22 @@ export interface EnvCodeMirrorProps {
     className?: string;
     height?: string;
     readonly?: boolean;
+    wrap?: boolean;
 }
 
-export const EnvCodeMirror: React.FC<EnvCodeMirrorProps> = ({
+export const EnvCodeMirror = forwardRef<ReactCodeMirrorRef, EnvCodeMirrorProps>(({
     data,
     onChange,
     envVariables = [],
     className,
     height,
     readonly = false,
-}) => {
+    wrap = false,
+}, ref) => {
     const { theme } = useTheme();
     const editorRef = useRef<ReactCodeMirrorRef>(null);
+    useImperativeHandle(ref, () => editorRef.current!);
+
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const [open, setOpen] = useState(false);
@@ -461,7 +468,18 @@ export const EnvCodeMirror: React.FC<EnvCodeMirrorProps> = ({
         active?.scrollIntoView({ block: 'nearest' });
     }, [activeIndex, open]);
 
-    const allExtensions = [customKeymap, ...getExtensions()];
+    const isDark = theme === 'dark';
+    const editorTheme = isDark ? darkEditorTheme : lightEditorTheme;
+    const syntaxTheme = isDark ? syntaxHighlighting(darkSyntax) : syntaxHighlighting(lightSyntax);
+
+    const allExtensions = [
+        customKeymap,
+        search({ top: true }),
+        editorTheme,
+        syntaxTheme,
+        ...getExtensions(),
+        ...(wrap ? [EditorView.lineWrapping] : []),
+    ];
 
     return (
         <>
@@ -470,7 +488,7 @@ export const EnvCodeMirror: React.FC<EnvCodeMirrorProps> = ({
                 value={data?.value}
                 height={height}
                 extensions={allExtensions}
-                theme={theme === 'dark' ? 'dark' : 'light'}
+                theme="none"
                 onChange={(val) => onChange?.(val)}
                 onUpdate={handleUpdate}
                 className={className}
@@ -486,4 +504,4 @@ export const EnvCodeMirror: React.FC<EnvCodeMirrorProps> = ({
             />
         </>
     );
-};
+});

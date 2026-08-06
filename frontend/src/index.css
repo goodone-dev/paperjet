@@ -268,13 +268,129 @@ code,
     outline: none !important;
 }
 
-.cm-gutters {
-    background-color: transparent !important;
-    border-right: 1px solid hsl(var(--border)) !important;
-    color: hsl(var(--muted-foreground)) !important;
+
+
+/* CodeMirror Search Panel — mirrors shadcn Input + Button ghost */
+.cm-panel.cm-search {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+    border-top: 1px solid hsl(var(--border)) !important;
+    border-bottom: none !important;
+    padding: 6px 12px !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-size: 13px !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    box-shadow: none !important;
 }
 
-.cm-activeLine,
-.cm-activeLineGutter {
-    background-color: hsl(var(--secondary) / 0.5) !important;
+/* Input — matches shadcn Input: h-9 rounded-md border border-input bg-transparent px-3 text-sm */
+.cm-panel.cm-search input[type="text"],
+.cm-panel.cm-search input.cm-textfield {
+    height: 30px !important;
+    padding: 0 10px !important;
+    background: transparent !important;
+    color: hsl(var(--foreground)) !important;
+    border: 1px solid hsl(var(--input)) !important;
+    border-radius: var(--radius) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 13px !important;
+    box-shadow: var(--shadow-sm) !important;
+    outline: none !important;
+    transition: border-color 150ms, box-shadow 150ms !important;
+    min-width: 160px !important;
+}
+
+.cm-panel.cm-search input[type="text"]:focus,
+.cm-panel.cm-search input.cm-textfield:focus {
+    border-color: hsl(var(--ring)) !important;
+    box-shadow: 0 0 0 1px hsl(var(--ring)) !important;
+}
+
+/* Buttons — matches shadcn Button ghost: hover:bg-accent hover:text-accent-foreground */
+.cm-panel.cm-search button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 30px !important;
+    padding: 0 10px !important;
+    background: transparent !important;
+    color: hsl(var(--foreground)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    border-radius: var(--radius) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    transition: background-color 150ms, color 150ms, border-color 150ms !important;
+}
+
+.cm-panel.cm-search button:hover {
+    background-color: hsl(var(--accent)) !important;
+    color: hsl(var(--accent-foreground)) !important;
+    border-color: hsl(var(--border)) !important;
+}
+
+.cm-panel.cm-search button:active {
+    background-color: hsl(var(--accent) / 0.8) !important;
+}
+
+/* Labels for "Match case" / "Regexp" checkboxes */
+.cm-panel.cm-search label {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    color: hsl(var(--muted-foreground)) !important;
+    font-size: 12px !important;
+    font-family: 'Inter', sans-serif !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    white-space: nowrap !important;
+}
+
+.cm-panel.cm-search label:hover {
+    color: hsl(var(--foreground)) !important;
+}
+
+.cm-panel.cm-search input[type="checkbox"] {
+    accent-color: hsl(var(--primary)) !important;
+    width: 13px !important;
+    height: 13px !important;
+    margin: 0 !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+}
+
+/* Close (×) button — ghost icon style */
+.cm-panel.cm-search button[name="close"] {
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+    height: 28px !important;
+    width: 28px !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: calc(var(--radius) - 2px) !important;
+    color: hsl(var(--muted-foreground)) !important;
+    font-size: 15px !important;
+    line-height: 1 !important;
+}
+
+.cm-panel.cm-search button[name="close"]:hover {
+    background-color: hsl(var(--accent)) !important;
+    color: hsl(var(--accent-foreground)) !important;
+}
+
+/* Search match highlights */
+.cm-searchMatch {
+    background-color: hsl(var(--warning-soft)) !important;
+    outline: 1px solid hsl(var(--warning) / 0.4) !important;
+    border-radius: 2px !important;
+}
+
+.cm-searchMatch.cm-searchMatch-selected {
+    background-color: hsl(var(--primary) / 0.25) !important;
+    outline: 1px solid hsl(var(--primary) / 0.5) !important;
 }
