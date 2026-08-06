@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { tokenizeJSON } from '@/lib/json-format';
 import type { ResponseData, ResponseKeyValue } from '@/types/response';
 import { EnvCodeMirror } from './EnvAutocomplete';
+import { BodyRaw } from '@/types/tab';
 
 type StatusKind = 'success' | 'warning' | 'error' | 'info';
 
@@ -15,6 +16,21 @@ function getStatusKind(status: number): StatusKind {
     if (status >= 400) return 'warning';
     if (status >= 200 && status < 300) return 'success';
     return 'info';
+}
+
+function getResponseContentType(response: ResponseData | null): BodyRaw['type'] {
+    if (!response) return 'json';
+    const ctHeader = response.headers?.find((h) => h.key.toLowerCase() === 'content-type')?.value?.toLowerCase() || '';
+
+    if (ctHeader.includes('json')) return 'json';
+    if (ctHeader.includes('xml')) return 'xml';
+    if (ctHeader.includes('html')) return 'html';
+
+    const trimmed = (response.body || '').trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) return 'json';
+    if (trimmed.startsWith('<')) return 'xml';
+
+    return 'text';
 }
 
 interface ResponsePanelProps {
@@ -31,6 +47,12 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
     onToggleMaximize,
 }) => {
     const [copied, setCopied] = useState(false);
+    const [formatMode, setFormatMode] = useState<string>('pretty');
+
+    const bodyType = useMemo(() => {
+        if (formatMode === 'raw') return 'text';
+        return getResponseContentType(response);
+    }, [formatMode, response]);
 
     const handleCopy = () => {
         if (!response?.body) return;
@@ -153,14 +175,14 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
                         ))}
                     </TabsList>
                     <div className="flex items-center gap-1">
-                        <ResponseFormatTabs />
+                        <ResponseFormatTabs active={formatMode} onChange={setFormatMode} />
                     </div>
                 </div>
 
                 <TabsContent value="body" className="flex-1 mt-0 min-h-0">
                     <ScrollArea className="h-full">
                         <EnvCodeMirror
-                            data={{ value: response.body, type: 'json' }}
+                            data={{ value: response.body, type: bodyType }}
                             className="text-sm border-0 bg-card outline-none"
                             readonly={true}
                         />
@@ -186,14 +208,18 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
     );
 };
 
-const ResponseFormatTabs: React.FC = () => {
-    const [active, setActive] = React.useState('pretty');
+interface ResponseFormatTabsProps {
+    active: string;
+    onChange: (mode: string) => void;
+}
+
+const ResponseFormatTabs: React.FC<ResponseFormatTabsProps> = ({ active, onChange }) => {
     return (
         <div className="flex items-center gap-0 mr-2">
             {['pretty', 'raw', 'preview', 'visualize'].map((m) => (
                 <button
                     key={m}
-                    onClick={() => setActive(m)}
+                    onClick={() => onChange(m)}
                     className={cn(
                         'h-7 px-2 text-[12px] capitalize rounded-md transition-colors',
                         active === m ? 'text-primary bg-primary-soft font-semibold' : 'text-muted-foreground hover:text-foreground',
