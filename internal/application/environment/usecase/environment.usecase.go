@@ -7,7 +7,7 @@ import (
 
 	"github.com/goodone-dev/paperjet/internal/domain/environment"
 	"github.com/goodone-dev/paperjet/internal/infrastructure/logger"
-	httperror "github.com/goodone-dev/paperjet/internal/utils/http_response/error"
+	errors "github.com/goodone-dev/paperjet/internal/utils/error"
 	"github.com/google/uuid"
 )
 
@@ -63,7 +63,7 @@ func (u *environmentUsecase) getEntity(ctx context.Context, ID uuid.UUID) (*envi
 		logger.Error(ctx, err, "❌ Failed to get environment").Write()
 		return nil, err
 	} else if env == nil {
-		return nil, httperror.NewNotFoundError("environment not found")
+		return nil, errors.NewNotFoundError("environment not found")
 	}
 
 	return env, nil

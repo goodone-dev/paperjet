@@ -8,7 +8,7 @@ import (
 
 	"github.com/goodone-dev/paperjet/internal/domain/collection"
 	"github.com/goodone-dev/paperjet/internal/infrastructure/logger"
-	httperror "github.com/goodone-dev/paperjet/internal/utils/http_response/error"
+	errors "github.com/goodone-dev/paperjet/internal/utils/error"
 	"github.com/google/uuid"
 )
 
@@ -174,7 +174,7 @@ func (u *collectionUsecase) getEntity(ctx context.Context, ID uuid.UUID) (*colle
 		logger.Error(ctx, err, "❌ Failed to get collection").Write()
 		return nil, err
 	} else if col == nil {
-		return nil, httperror.NewNotFoundError("collection not found")
+		return nil, errors.NewNotFoundError("collection not found")
 	}
 
 	return col, nil
@@ -493,7 +493,7 @@ func (u *collectionUsecase) getFolderEntity(ctx context.Context, ID uuid.UUID) (
 		logger.Error(ctx, err, "❌ Failed to get folder").Write()
 		return nil, err
 	} else if folder == nil {
-		return nil, httperror.NewNotFoundError("folder not found")
+		return nil, errors.NewNotFoundError("folder not found")
 	}
 
 	return folder, nil
@@ -751,7 +751,7 @@ func (u *collectionUsecase) getRequestEntity(ctx context.Context, ID uuid.UUID) 
 		logger.Error(ctx, err, "❌ Failed to get request").Write()
 		return nil, err
 	} else if req == nil {
-		return nil, httperror.NewNotFoundError("request not found")
+		return nil, errors.NewNotFoundError("request not found")
 	}
 
 	return req, nil

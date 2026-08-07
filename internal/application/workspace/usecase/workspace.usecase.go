@@ -6,7 +6,7 @@ import (
 
 	"github.com/goodone-dev/paperjet/internal/domain/workspace"
 	"github.com/goodone-dev/paperjet/internal/infrastructure/logger"
-	httperror "github.com/goodone-dev/paperjet/internal/utils/http_response/error"
+	errors "github.com/goodone-dev/paperjet/internal/utils/error"
 	"github.com/google/uuid"
 )
 
@@ -52,7 +52,7 @@ func (u *workspaceUsecase) getEntity(ctx context.Context, ID uuid.UUID) (*worksp
 		logger.Error(ctx, err, "❌ Failed to get workspace").Write()
 		return nil, err
 	} else if ws == nil {
-		return nil, httperror.NewNotFoundError("workspace not found")
+		return nil, errors.NewNotFoundError("workspace not found")
 	}
 
 	return ws, nil
