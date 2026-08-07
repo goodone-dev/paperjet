@@ -70,30 +70,29 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
         }
     };
 
-    React.useEffect(() => {
-        if (isBulkEdit) {
-            const lines = bulkText.split('\n');
-            const newRows: KeyValueRow[] = lines.map((line, i) => {
-                let enabled = true;
-                let text = line.trim();
-                if (text.startsWith('//')) {
-                    enabled = false;
-                    text = text.slice(2).trim();
-                }
-                const colonIdx = text.indexOf(':');
-                if (colonIdx === -1) {
-                    return { id: `kv-bulk-${i}`, key: text, value: '', description: '', enabled };
-                }
-                const key = text.slice(0, colonIdx).trim();
-                const value = text.slice(colonIdx + 1).trim();
-                return { id: `kv-bulk-${i}`, key, value, description: '', enabled };
-            });
-            if (newRows.length === 0 || newRows[newRows.length - 1].key) {
-                newRows.push({ id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', value: '', description: '', enabled: true });
+    const handleBulkChange = (text: string) => {
+        setBulkText(text);
+        const lines = text.split('\n');
+        const newRows: KeyValueRow[] = lines.map((line, i) => {
+            let enabled = true;
+            let textLine = line.trim();
+            if (textLine.startsWith('//')) {
+                enabled = false;
+                textLine = textLine.slice(2).trim();
             }
-            onChange(newRows);
+            const colonIdx = textLine.indexOf(':');
+            if (colonIdx === -1) {
+                return { id: `kv-bulk-${i}`, key: textLine, value: '', description: '', enabled };
+            }
+            const key = textLine.slice(0, colonIdx).trim();
+            const value = textLine.slice(colonIdx + 1).trim();
+            return { id: `kv-bulk-${i}`, key, value, description: '', enabled };
+        });
+        if (newRows.length === 0 || newRows[newRows.length - 1].key) {
+            newRows.push({ id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', value: '', description: '', enabled: true });
         }
-    }, [bulkText, isBulkEdit, onChange]);
+        onChange(newRows);
+    };
 
     const inputBase =
         'h-9 border-0 border-l border-border rounded-none text-sm mono bg-transparent focus:outline-none focus-visible:ring-0 focus-visible:bg-primary-soft/50 px-3 w-full';
@@ -171,7 +170,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
                 <div className="p-0 border-b border-border">
                     <textarea
                         value={bulkText}
-                        onChange={(e) => setBulkText(e.target.value)}
+                        onChange={(e) => handleBulkChange(e.target.value)}
                         placeholder="key:value"
                         className="w-full h-48 bg-transparent text-sm mono p-4 focus:outline-none resize-y"
                         spellCheck={false}
