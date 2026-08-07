@@ -34,8 +34,8 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
     }, [request.bodyType, request.bodyRaw, update]);
 
     return (
-        <div>
-            <div className="mb-3">
+        <div className="flex flex-col h-full min-h-0">
+            <div className="mb-3 shrink-0">
                 <RadioGroup
                     value={request.bodyType}
                     onValueChange={(v: string) => update({ bodyType: v as RequestTab['bodyType'] })}
@@ -75,58 +75,62 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
                 </RadioGroup>
             </div>
 
-            {request.bodyType === 'none' && (
-                <div className="rounded-lg border border-dashed border-border bg-secondary/40 p-12 text-center">
-                    <p className="text-sm text-muted-foreground">This request does not have a body</p>
-                </div>
-            )}
-            {request.bodyType === 'raw' && (
-                <div className="rounded-lg border border-border bg-card overflow-hidden">
-                    <div className="flex bg-secondary/50 border-b border-border">
+            {request.bodyType === 'raw' ? (
+                <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col flex-1 min-h-0">
+                    <div className="flex bg-secondary/50 border-b border-border shrink-0">
                         <div className="px-3 py-2 text-[11px] text-muted-foreground mono uppercase tracking-wider font-semibold">
                             {request.bodyRaw?.type || 'json'}
                         </div>
                     </div>
                     <EnvCodeMirror
                         data={request.bodyRaw}
-                        height="260px"
+                        height="100%"
                         envVariables={envVariables}
                         onChange={(value) => update({ bodyRaw: { ...request.bodyRaw, value } as BodyRaw })}
-                        className="text-sm border-0 bg-card outline-none"
+                        className="text-sm border-0 bg-card outline-none flex-1 min-h-0"
                     />
                 </div>
-            )}
-            {request.bodyType === 'form-data' && (
-                <KeyValueEditor
-                    rows={request.bodyFormData}
-                    envVariables={envVariables}
-                    onChange={(rows) => update({ bodyFormData: rows })}
-                    placeholderKey="key"
-                    placeholderValue="value"
-                />
-            )}
-            {request.bodyType === 'x-www-form-urlencoded' && (
-                <KeyValueEditor
-                    rows={request.bodyUrlEncoded}
-                    envVariables={envVariables}
-                    onChange={(rows) => update({ bodyUrlEncoded: rows })}
-                    placeholderKey="key"
-                    placeholderValue="value"
-                />
-            )}
-            {request.bodyType === 'binary' && (
-                <div className="rounded-lg border border-dashed border-border bg-secondary/40 p-12 text-center">
-                    <Button variant="outline" size="sm">
-                        Select File
-                    </Button>
-                </div>
-            )}
-            {request.bodyType === 'graphql' && (
-                <div className="rounded-lg border border-border bg-card overflow-hidden">
-                    <Textarea
-                        defaultValue={'query {\n  user(id: "1") {\n    id\n    name\n    email\n  }\n}'}
-                        className="min-h-[220px] mono text-sm border-0 rounded-none focus-visible:ring-0 bg-card resize-none"
-                    />
+            ) : (
+                <div className="flex-1 overflow-auto scrollbar-thin">
+                    {request.bodyType === 'none' && (
+                        <div className="rounded-lg border border-dashed border-border bg-secondary/40 p-12 text-center">
+                            <p className="text-sm text-muted-foreground">This request does not have a body</p>
+                        </div>
+                    )}
+
+                    {request.bodyType === 'form-data' && (
+                        <KeyValueEditor
+                            rows={request.bodyFormData}
+                            envVariables={envVariables}
+                            onChange={(rows) => update({ bodyFormData: rows })}
+                            placeholderKey="key"
+                            placeholderValue="value"
+                        />
+                    )}
+                    {request.bodyType === 'x-www-form-urlencoded' && (
+                        <KeyValueEditor
+                            rows={request.bodyUrlEncoded}
+                            envVariables={envVariables}
+                            onChange={(rows) => update({ bodyUrlEncoded: rows })}
+                            placeholderKey="key"
+                            placeholderValue="value"
+                        />
+                    )}
+                    {request.bodyType === 'binary' && (
+                        <div className="rounded-lg border border-dashed border-border bg-secondary/40 p-12 text-center">
+                            <Button variant="outline" size="sm">
+                                Select File
+                            </Button>
+                        </div>
+                    )}
+                    {request.bodyType === 'graphql' && (
+                        <div className="rounded-lg border border-border bg-card overflow-hidden">
+                            <Textarea
+                                defaultValue={'query {\n  user(id: "1") {\n    id\n    name\n    email\n  }\n}'}
+                                className="min-h-[220px] mono text-sm border-0 rounded-none focus-visible:ring-0 bg-card resize-none"
+                            />
+                        </div>
+                    )}
                 </div>
             )}
         </div>

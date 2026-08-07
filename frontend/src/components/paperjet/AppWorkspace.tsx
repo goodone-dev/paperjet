@@ -250,7 +250,7 @@ export default function AppWorkspace() {
             />
 
             <PanelGroup direction="horizontal" className="flex-1 min-h-0">
-                <Panel defaultSize={26} minSize={18} maxSize={36}>
+                <Panel defaultSize={25} minSize={20} maxSize={30}>
                     <Sidebar
                         actions={sidebarActions}
                         onOpenRequest={handleOpenRequest}
@@ -286,8 +286,7 @@ export default function AppWorkspace() {
                             <PanelGroup direction="vertical" className="flex-1 min-h-0">
                                 <Panel
                                     ref={requestPanelRef}
-                                    defaultSize={55}
-                                    minSize={25}
+                                    minSize={14}
                                     collapsible={true}
                                 >
                                     <RequestPanel
@@ -300,7 +299,7 @@ export default function AppWorkspace() {
                                     />
                                 </Panel>
                                 <ResizeHandle horizontal className={cn(isResponseMaximized && 'hidden')} />
-                                <Panel defaultSize={45} minSize={20}>
+                                <Panel defaultSize={30} minSize={6}>
                                     <ResponsePanel
                                         response={(activeTab as RequestTab).response}
                                         isSending={(activeTab as RequestTab).isSending}

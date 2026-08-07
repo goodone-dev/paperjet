@@ -163,8 +163,8 @@ export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, o
                     </TabsList>
                 </div>
 
-                <div className="flex-1 overflow-auto p-5 scrollbar-thin">
-                    <TabsContent value="params" className="mt-0 space-y-6">
+                <div className="flex-1 flex flex-col min-h-0">
+                    <TabsContent value="params" className="mt-0 space-y-6 flex-1 overflow-auto p-5 scrollbar-thin data-[state=active]:block">
                         <div>
                             <SectionHeader title="Query Params" description="Append key-value pairs to the request URL" />
                             <KeyValueEditor
@@ -195,26 +195,26 @@ export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, o
                         )}
                     </TabsContent>
 
-                    <TabsContent value="headers" className="mt-0">
+                    <TabsContent value="headers" className="mt-0 flex-1 overflow-auto p-5 scrollbar-thin data-[state=active]:block">
                         <SectionHeader title="Headers" description="Headers are sent along with the request" />
                         <KeyValueEditor rows={request.headers} envVariables={envVariables} onChange={(rows) => update({ headers: rows })} />
                     </TabsContent>
 
-                    <TabsContent value="auth" className="mt-0">
+                    <TabsContent value="auth" className="mt-0 flex-1 overflow-auto p-5 scrollbar-thin data-[state=active]:block">
                         <AuthEditor auth={request.auth} onChange={(auth) => update({ auth })} envVariables={envVariables} />
                     </TabsContent>
 
-                    <TabsContent value="body" className="mt-0">
+                    <TabsContent value="body" className="mt-0 flex-1 min-h-0 data-[state=active]:flex flex-col p-5">
                         <BodyEditor request={request} update={update} envVariables={envVariables} />
                     </TabsContent>
 
-                    <TabsContent value="scripts" className="mt-0">
+                    <TabsContent value="scripts" className="mt-0 flex-1 overflow-auto p-5 scrollbar-thin data-[state=active]:block">
                         <ScriptsPlaceholder title="Pre-request Script" description="Run JavaScript before sending the request to set variables or modify the request." />
                     </TabsContent>
-                    <TabsContent value="tests" className="mt-0">
+                    <TabsContent value="tests" className="mt-0 flex-1 overflow-auto p-5 scrollbar-thin data-[state=active]:block">
                         <ScriptsPlaceholder title="Test Scripts" description="Write assertions to validate the response after it returns." />
                     </TabsContent>
-                    <TabsContent value="settings" className="mt-0">
+                    <TabsContent value="settings" className="mt-0 flex-1 overflow-auto p-5 scrollbar-thin data-[state=active]:block">
                         <SettingsPanel />
                     </TabsContent>
                 </div>
