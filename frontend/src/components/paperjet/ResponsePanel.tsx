@@ -243,6 +243,9 @@ const ResponseFormatTabs: React.FC<ResponseFormatTabsProps> = ({
     wrapText,
     onToggleWrap,
 }) => {
+    const isMac = navigator.platform?.toLowerCase().includes('mac');
+    const searchShortcutHint = isMac ? '⌘F' : 'Ctrl+F';
+
     return (
         <div className="flex items-center gap-0 mr-2">
             {['pretty', 'raw', 'preview', 'visualize'].map((m) => (
@@ -258,7 +261,7 @@ const ResponseFormatTabs: React.FC<ResponseFormatTabsProps> = ({
                 </button>
             ))}
             <span className="mx-2 h-4 w-px bg-border" />
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onSearch} title="Search (Ctrl/Cmd+F)">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onSearch} title={`Search (${searchShortcutHint})`}>
                 <Search className="h-3.5 w-3.5" />
             </Button>
             <Button

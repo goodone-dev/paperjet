@@ -36,7 +36,7 @@ export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, o
     // Save-button tooltip: shortcut hint if this is a saved request, otherwise an explanation.
     const isMac = navigator.platform?.toLowerCase().includes('mac');
     const saveShortcutHint = isMac ? '⌘S' : 'Ctrl+S';
-    const saveTooltip = request.sourceId ? saveShortcutHint : 'Not a saved request';
+    const saveTooltip = request.sourceId ? `Save (${saveShortcutHint})` : 'Not a saved request';
 
     return (
         <div className="flex flex-col h-full bg-background">

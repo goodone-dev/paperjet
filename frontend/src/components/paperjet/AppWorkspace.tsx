@@ -284,7 +284,7 @@ export default function AppWorkspace() {
 
                 <ResizeHandle />
 
-                <Panel defaultSize={80} minSize={50}>
+                <Panel defaultSize={75} minSize={50}>
                     <div className="h-full flex flex-col bg-background">
                         <RequestTabsBar tabs={tabs} activeId={activeTabId} onSelect={setActiveTabId} actions={tabActions} />
 
