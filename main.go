@@ -65,7 +65,7 @@ func main() {
 		environmentUsecase: environmentUsecase,
 	})
 
-	menu := NewMenu()
+	menu := NewMenu(app)
 
 	// Create application with options
 	err = wails.Run(&options.App{

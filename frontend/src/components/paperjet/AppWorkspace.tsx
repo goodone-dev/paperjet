@@ -22,6 +22,7 @@ import { PanelGroup, Panel, PanelResizeHandle, type ImperativePanelHandle } from
 import { cn } from '@/lib/utils';
 import { GetRequest } from '@/lib/api';
 import { mapBackendRequestToTab, mapHistoryEntryToTab } from '@/lib/request-mapper';
+import { EventsOn, EventsOff } from '@/wailsjs/runtime/runtime';
 import type { Collection } from '@/types/collection';
 import type { RequestTab, Tab } from '@/types/tab';
 import type { RequestSummary } from '@/types/collection';
@@ -147,6 +148,23 @@ export default function AppWorkspace() {
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
     }, [handleSaveRequest]);
+
+    // Cmd/Ctrl+T new request tab
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+                e.preventDefault();
+                newTab();
+            }
+        };
+        const handleMenuNewRequest = () => newTab();
+        window.addEventListener('keydown', handler);
+        EventsOn('menu:new-request', handleMenuNewRequest);
+        return () => {
+            window.removeEventListener('keydown', handler);
+            EventsOff('menu:new-request');
+        };
+    }, [newTab]);
 
     // Keep environment tabs in sync with rename/delete of underlying env
     useEnvironmentTabSync(tabs, activeTabId, data.environments, { setTabs, setActiveTabId, closeAll });
