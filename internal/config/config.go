@@ -11,10 +11,7 @@ import (
 var ContextTimeout time.Duration
 var Application ApplicationConfig
 var DB DBConfig
-var HttpServer HttpServerConfig
 var Logger LoggerConfig
-var CircuitBreaker CircuitBreakerConfig
-var HttpClient HttpClientConfig
 
 type Environment string
 
@@ -40,27 +37,8 @@ type DBConfig struct {
 	InsertBatchSize    int           `mapstructure:"DB_INSERT_BATCH_SIZE"`
 }
 
-type HttpServerConfig struct {
-	ReadTimeout       time.Duration `mapstructure:"HTTP_SERVER_READ_TIMEOUT"`
-	ReadHeaderTimeout time.Duration `mapstructure:"HTTP_SERVER_READ_HEADER_TIMEOUT"`
-	WriteTimeout      time.Duration `mapstructure:"HTTP_SERVER_WRITE_TIMEOUT"`
-	IdleTimeout       time.Duration `mapstructure:"HTTP_SERVER_IDLE_TIMEOUT"`
-}
-
 type LoggerConfig struct {
 	Level int `mapstructure:"LOGGER_LEVEL"`
-}
-
-type CircuitBreakerConfig struct {
-	MinRequests  int           `mapstructure:"CIRCUIT_BREAKER_MIN_REQUESTS"`
-	FailureRatio float64       `mapstructure:"CIRCUIT_BREAKER_FAILURE_RATIO"`
-	Timeout      time.Duration `mapstructure:"CIRCUIT_BREAKER_TIMEOUT"`
-	MaxRequests  int           `mapstructure:"CIRCUIT_BREAKER_MAX_REQUESTS"`
-}
-
-type HttpClientConfig struct {
-	RetryCount    int           `mapstructure:"HTTP_CLIENT_RETRY_COUNT"`
-	RetryWaitTime time.Duration `mapstructure:"HTTP_CLIENT_RETRY_WAIT_TIME"`
 }
 
 var (
@@ -92,16 +70,7 @@ func Load() (err error) {
 	if err = viper.Unmarshal(&DB); err != nil {
 		return
 	}
-	if err = viper.Unmarshal(&HttpServer); err != nil {
-		return
-	}
 	if err = viper.Unmarshal(&Logger); err != nil {
-		return
-	}
-	if err = viper.Unmarshal(&CircuitBreaker); err != nil {
-		return
-	}
-	if err = viper.Unmarshal(&HttpClient); err != nil {
 		return
 	}
 
@@ -126,22 +95,6 @@ func setDefaultConfig() {
 	viper.SetDefault("DB_CONN_MAX_LIFETIME", "300s")
 	viper.SetDefault("DB_INSERT_BATCH_SIZE", 100)
 
-	// HTTP Server defaults (in seconds)
-	viper.SetDefault("HTTP_SERVER_READ_TIMEOUT", "5s")
-	viper.SetDefault("HTTP_SERVER_READ_HEADER_TIMEOUT", "2s")
-	viper.SetDefault("HTTP_SERVER_WRITE_TIMEOUT", "10s")
-	viper.SetDefault("HTTP_SERVER_IDLE_TIMEOUT", "120s")
-
 	// Logger defaults
 	viper.SetDefault("LOGGER_LEVEL", "0")
-
-	// Circuit Breaker defaults
-	viper.SetDefault("CIRCUIT_BREAKER_MIN_REQUESTS", 3)
-	viper.SetDefault("CIRCUIT_BREAKER_FAILURE_RATIO", 0.5)
-	viper.SetDefault("CIRCUIT_BREAKER_TIMEOUT", "60s")
-	viper.SetDefault("CIRCUIT_BREAKER_MAX_REQUESTS", 1)
-
-	// HTTP Client defaults
-	viper.SetDefault("HTTP_CLIENT_RETRY_COUNT", 1)
-	viper.SetDefault("HTTP_CLIENT_RETRY_WAIT_TIME", "1s")
 }
