@@ -5,7 +5,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Code2 } from 'lucide-react';
 import { KeyValueEditor } from '../KeyValueEditor';
-import { EnvCodeMirror } from '../EnvAutocomplete';
+import { CodeEditor } from '../CodeEditor';
 import { beautify } from '@/lib/raw-beautifier';
 import type { BodyRaw, RequestTab } from '@/types/tab';
 import type { EnvVariable } from '@/types/environment';
@@ -82,7 +82,7 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
                             {request.bodyRaw?.type || 'json'}
                         </div>
                     </div>
-                    <EnvCodeMirror
+                    <CodeEditor
                         data={request.bodyRaw}
                         height="100%"
                         envVariables={envVariables}
