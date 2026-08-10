@@ -14,6 +14,7 @@ export const methodColorMap: Record<string, string> = {
 export interface KeyValueRow {
     id: string;
     key: string;
+    type: string;
     value: string;
     description?: string;
     enabled: boolean;
@@ -36,7 +37,7 @@ export type BodyConfig = NoneBody | RawBody | FormDataBody | UrlEncodedBody | Bi
 
 export interface BackendKeyValue {
     key: string;
-    type?: string;
+    type: string;
     value: string;
     description?: string;
     enabled?: boolean;

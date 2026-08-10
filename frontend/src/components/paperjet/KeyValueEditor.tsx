@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
-import { Trash2, Edit3, AlignLeft } from 'lucide-react';
+import { Trash2, Edit3, AlignLeft, FileInput, TextCursorInput, ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { EnvInput } from './EnvAutocomplete';
 import type { KeyValueRow } from '@/types/collection';
 import type { EnvVariable } from '@/types/environment';
+import { SelectFile } from '@/lib/api';
 
 interface KeyValueEditorProps {
     rows: KeyValueRow[];
@@ -12,6 +19,7 @@ interface KeyValueEditorProps {
     placeholderKey?: string;
     placeholderValue?: string;
     showDescription?: boolean;
+    showKeyType?: boolean;
     readonlyKey?: boolean;
     envVariables?: EnvVariable[];
 }
@@ -22,6 +30,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
     placeholderKey = 'Key',
     placeholderValue = 'Value',
     showDescription = true,
+    showKeyType = false,
     readonlyKey = false,
     envVariables = [],
 }) => {
@@ -30,7 +39,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
 
     if (!isBulkEdit && !readonlyKey) {
         if (rows.length === 0 || rows[rows.length - 1].key) {
-            rows.push({ id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', value: '', description: '', enabled: true });
+            rows.push({ id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', type: 'text', value: '', description: '', enabled: true });
         }
     }
 
@@ -42,6 +51,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
                 next.push({
                     id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
                     key: '',
+                    type: 'text',
                     value: '',
                     description: '',
                     enabled: true,
@@ -53,7 +63,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
 
     const remove = (id: string) => {
         let next = rows.filter((r) => r.id !== id);
-        if (next.length === 0) next = [{ id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', value: '', description: '', enabled: true }];
+        if (next.length === 0) next = [{ id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', type: 'text', value: '', description: '', enabled: true }];
         onChange(next);
     };
 
@@ -82,20 +92,25 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
             }
             const colonIdx = textLine.indexOf(':');
             if (colonIdx === -1) {
-                return { id: `kv-bulk-${i}`, key: textLine, value: '', description: '', enabled };
+                return { id: `kv-bulk-${i}`, key: textLine, type: 'text', value: '', description: '', enabled };
             }
             const key = textLine.slice(0, colonIdx).trim();
             const value = textLine.slice(colonIdx + 1).trim();
-            return { id: `kv-bulk-${i}`, key, value, description: '', enabled };
+            return { id: `kv-bulk-${i}`, key, type: 'text', value, description: '', enabled };
         });
         if (newRows.length === 0 || newRows[newRows.length - 1].key) {
-            newRows.push({ id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', value: '', description: '', enabled: true });
+            newRows.push({ id: `kv-${Date.now()}-${Math.floor(Math.random() * 1000)}`, key: '', type: 'text', value: '', description: '', enabled: true });
         }
         onChange(newRows);
     };
 
     const inputBase =
         'h-9 border-0 border-l border-border rounded-none text-sm mono bg-transparent focus:outline-none focus-visible:ring-0 focus-visible:bg-primary-soft/50 px-3 w-full';
+
+    const handleSelectFile = async (id: string) => {
+        const path = await SelectFile();
+        if (path) update(id, 'value', path);
+    };
 
     return (
         <div className="rounded-lg border border-border overflow-hidden bg-card">
@@ -127,6 +142,47 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
                                     readOnly
                                     className={`${inputBase} text-muted-foreground cursor-default select-none`}
                                 />
+                            ) : showKeyType ? (
+                                <div className="flex items-stretch border-l border-border">
+                                    <EnvInput
+                                        envVariables={envVariables}
+                                        value={row.key}
+                                        onChange={(e) => update(row.id, 'key', e.target.value)}
+                                        placeholder={placeholderKey}
+                                        className={`${inputBase} border-0 flex-1`}
+                                    />
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <button
+                                                className="flex items-center gap-1 px-2 text-muted-foreground hover:text-primary transition-colors border-l border-border"
+                                                title="Change type"
+                                            >
+                                                {row.type === 'file' ? (
+                                                    <FileInput className="h-3.5 w-3.5" />
+                                                ) : (
+                                                    <TextCursorInput className="h-3.5 w-3.5" />
+                                                )}
+                                                <ChevronDown className="h-3 w-3" />
+                                            </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-32">
+                                            <DropdownMenuItem
+                                                onClick={() => update(row.id, 'type', 'text')}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <TextCursorInput className="h-3.5 w-3.5" />
+                                                <span>Text</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={() => update(row.id, 'type', 'file')}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <FileInput className="h-3.5 w-3.5" />
+                                                <span>File</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
                             ) : (
                                 <EnvInput
                                     envVariables={envVariables}
@@ -137,13 +193,38 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
                                 />
                             )}
 
-                            <EnvInput
-                                envVariables={envVariables}
-                                value={row.value}
-                                onChange={(e) => update(row.id, 'value', e.target.value)}
-                                placeholder={placeholderValue}
-                                className={inputBase}
-                            />
+                            {showKeyType && row.type === 'file' ? (
+                                <div className="flex items-center border-l border-border min-w-0">
+                                    {row.value ? (
+                                        <div className="flex items-center w-full px-3 min-w-0">
+                                            <span className="text-sm mono truncate" title={row.value}>
+                                                {row.value.split(/[/\\]/).pop()}
+                                            </span>
+                                            <button
+                                                onClick={() => handleSelectFile(row.id)}
+                                                className="ml-2 text-xs text-primary hover:underline shrink-0"
+                                            >
+                                                Change
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleSelectFile(row.id)}
+                                            className="flex items-center w-full h-full px-3 text-sm text-muted-foreground hover:text-primary transition-colors"
+                                        >
+                                            Select File
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <EnvInput
+                                    envVariables={envVariables}
+                                    value={row.value}
+                                    onChange={(e) => update(row.id, 'value', e.target.value)}
+                                    placeholder={placeholderValue}
+                                    className={inputBase}
+                                />
+                            )}
 
                             {showDescription && (
                                 <input

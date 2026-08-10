@@ -18,6 +18,7 @@ function mapBackendKvsToRows(
     return items.map((p, i) => ({
         id: `${idPrefix}${i}`,
         key: p.key,
+        type: p.type,
         value: p.value,
         description: p.description || '',
         enabled: p.enabled !== false,
@@ -46,19 +47,19 @@ export function mapBackendRequestToTab(full: WireRequestResponse, meta: OpenRequ
         method: full.method,
         url: full.url || '',
         queryParams: mapBackendKvsToRows(full.query_params, 'p', [
-            { id: 'p1', key: '', value: '', description: '', enabled: true },
+            { id: 'p1', key: '', type: 'text', value: '', description: '', enabled: true },
         ]),
         headers: mapBackendKvsToRows(full.headers, 'h', [
-            { id: 'h1', key: 'Accept', value: 'application/json', description: '', enabled: true },
-            { id: 'h2', key: '', value: '', description: '', enabled: true },
+            { id: 'h1', key: 'Accept', type: 'text', value: 'application/json', description: '', enabled: true },
+            { id: 'h2', key: '', type: 'text', value: '', description: '', enabled: true },
         ]),
         bodyType: body?.type || 'none',
         bodyRaw: { type: body?.raw?.type || 'json', value: body?.raw?.value } as BodyRaw,
         bodyFormData: mapBackendKvsToRows(body?.form_data, 'f', [
-            { id: 'f1', key: '', value: '', description: '', enabled: true },
+            { id: 'f1', key: '', type: 'text', value: '', description: '', enabled: true },
         ]),
         bodyUrlEncoded: mapBackendKvsToRows(body?.url_encoded, 'u', [
-            { id: 'u1', key: '', value: '', description: '', enabled: true },
+            { id: 'u1', key: '', type: 'text', value: '', description: '', enabled: true },
         ]),
         bodyBinary: body?.binary || null,
         pathVariables: mapBackendKvsToRows(full.path_variables, 'pv', []),
@@ -81,19 +82,19 @@ export function mapHistoryEntryToTab(entry: HistoryEntry): Partial<RequestTab> {
         method: entry.method,
         url: entry.url,
         queryParams: mapBackendKvsToRows(entry.queryParams, 'p', [
-            { id: 'p1', key: '', value: '', description: '', enabled: true },
+            { id: 'p1', key: '', type: 'text', value: '', description: '', enabled: true },
         ]),
         headers: mapBackendKvsToRows(entry.headers, 'h', [
-            { id: 'h1', key: 'Accept', value: 'application/json', description: '', enabled: true },
-            { id: 'h2', key: '', value: '', description: '', enabled: true },
+            { id: 'h1', key: 'Accept', type: 'text', value: 'application/json', description: '', enabled: true },
+            { id: 'h2', key: '', type: 'text', value: '', description: '', enabled: true },
         ]),
         bodyType: body?.type || 'none',
         bodyRaw: { type: body?.raw?.type || 'json', value: body?.raw?.value } as BodyRaw,
         bodyFormData: mapBackendKvsToRows(body?.form_data, 'f', [
-            { id: 'f1', key: '', value: '', description: '', enabled: true },
+            { id: 'f1', key: '', type: 'text', value: '', description: '', enabled: true },
         ]),
         bodyUrlEncoded: mapBackendKvsToRows(body?.url_encoded, 'u', [
-            { id: 'u1', key: '', value: '', description: '', enabled: true },
+            { id: 'u1', key: '', type: 'text', value: '', description: '', enabled: true },
         ]),
         bodyBinary: body?.binary || null,
         pathVariables: mapBackendKvsToRows(entry.pathVariables, 'pv', []),
@@ -105,6 +106,7 @@ export function mapHistoryEntryToTab(entry: HistoryEntry): Partial<RequestTab> {
 function rowsToBackendKvs(rows: KeyValueRow[] | undefined): BackendKeyValue[] {
     return (rows || []).filter((p) => p.key).map((p) => ({
         key: p.key,
+        type: p.type,
         value: p.value,
         description: p.description || '',
         enabled: p.enabled !== false,

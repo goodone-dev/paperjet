@@ -10,6 +10,7 @@ function newRow(key: string, value: string): KeyValueRow {
     return {
         id: `pv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         key,
+        type: 'text',
         value,
         description: '',
         enabled: true,
@@ -87,6 +88,7 @@ export function syncParamsFromUrl(newUrl: string, currentParams: KeyValueRow[]):
         newParams.push({
             id: `p-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
             key: k,
+            type: 'text',
             value: v,
             description: '',
             enabled: true,
@@ -98,6 +100,7 @@ export function syncParamsFromUrl(newUrl: string, currentParams: KeyValueRow[]):
         newParams.push({
             id: `p-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
             key: '',
+            type: 'text',
             value: '',
             description: '',
             enabled: true,

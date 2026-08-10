@@ -106,6 +106,7 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
                             onChange={(rows) => update({ bodyFormData: rows })}
                             placeholderKey="key"
                             placeholderValue="value"
+                            showKeyType={true}
                         />
                     )}
                     {request.bodyType === 'x-www-form-urlencoded' && (
