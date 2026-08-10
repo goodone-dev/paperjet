@@ -264,6 +264,7 @@ const ResponseFormatTabs: React.FC<ResponseFormatTabsProps> = ({
                         'h-7 px-2 text-[12px] capitalize rounded-md transition-colors',
                         active === m ? 'text-primary bg-primary-soft font-semibold' : 'text-muted-foreground hover:text-foreground',
                     )}
+                    disabled={m === 'visualize'}
                 >
                     {m}
                 </button>
