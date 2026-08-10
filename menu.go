@@ -8,7 +8,6 @@ import (
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// TODO: Complete menubar with shortcuts
 func NewMenu(app *App) *menu.Menu {
 	appMenu := menu.NewMenu()
 	if runtime.GOOS == "darwin" {
