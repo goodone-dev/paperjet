@@ -536,7 +536,7 @@ func (a *App) SendRequest(payload proxy.ProxyPayload) (*proxy.ProxyResponse, err
 		return nil, err
 	}
 
-	logger.Debugf(a.ctx, "Request '%s (%s %s)' sent", payload.Name, payload.Method, payload.URL).Write()
+	logger.Debugf(a.ctx, "Request '%s - %s %s' sent", payload.Name, payload.Method, payload.URL).Write()
 
 	return res, nil
 }

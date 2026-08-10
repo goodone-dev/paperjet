@@ -40,7 +40,9 @@ export function useRequestSend(
             const payload = buildRequestPayload(reqTab, envVars);
             const res: WireProxyResponse = await SendRequest(payload);
 
-            let bodyStr = '';
+            let rawText = '';
+            let bytesArray: number[] = [];
+
             if (typeof res.body === 'string') {
                 try {
                     const binString = atob(res.body);
@@ -48,14 +50,17 @@ export function useRequestSend(
                     for (let i = 0; i < binString.length; i++) {
                         bytes[i] = binString.charCodeAt(i);
                     }
-                    bodyStr = new TextDecoder().decode(bytes);
+                    bytesArray = Array.from(bytes);
+                    rawText = new TextDecoder().decode(bytes);
                 } catch {
-                    bodyStr = res.body;
+                    rawText = res.body;
+                    bytesArray = [];
                 }
             } else if (Array.isArray(res.body)) {
-                bodyStr = new TextDecoder().decode(new Uint8Array(res.body as number[]));
+                bytesArray = res.body as number[];
+                rawText = new TextDecoder().decode(new Uint8Array(bytesArray));
             } else {
-                bodyStr = String(res.body || '');
+                rawText = String(res.body || '');
             }
 
             responseData = {
@@ -65,7 +70,8 @@ export function useRequestSend(
                 size: res.size,
                 headers: Object.entries(res.headers || {}).map(([key, value]) => ({ key, value })),
                 cookies: Object.entries(res.cookies || {}).map(([key, value]) => ({ key, value })),
-                body: bodyStr,
+                body: rawText,
+                bytes: bytesArray,
                 error: false,
             };
 
@@ -81,6 +87,7 @@ export function useRequestSend(
                 headers: [],
                 cookies: [],
                 body: '{\n  "error": "' + (err?.message || err) + '"\n}',
+                bytes: [],
                 error: true,
             };
             setTabs((ts) =>

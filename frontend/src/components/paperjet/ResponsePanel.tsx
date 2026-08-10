@@ -10,6 +10,7 @@ import { BodyRaw } from '@/types/tab';
 import { openSearchPanel } from '@codemirror/search';
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { CodeEditor } from './CodeEditor';
+import { BodyPreview } from './BodyPreview';
 
 type StatusKind = 'success' | 'warning' | 'error' | 'info';
 
@@ -199,14 +200,21 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
                 </div>
 
                 <TabsContent value="body" className="flex-1 mt-0 min-h-0 data-[state=active]:flex flex-col">
-                    <CodeEditor
-                        ref={editorRef}
-                        data={{ value: response.body, type: bodyType }}
-                        className="text-sm border-0 bg-card outline-none flex-1 min-h-0"
-                        height="100%"
-                        readonly={true}
-                        wrap={wrapText}
-                    />
+                    {formatMode === 'preview' ? (
+                        <BodyPreview
+                            body={response.bytes}
+                            contentType={response.headers?.find((h) => h.key.toLowerCase() === 'content-type')?.value}
+                        />
+                    ) : (
+                        <CodeEditor
+                            ref={editorRef}
+                            data={{ value: response.body, type: bodyType }}
+                            className="text-sm border-0 bg-card outline-none flex-1 min-h-0"
+                            height="100%"
+                            readonly={true}
+                            wrap={wrapText}
+                        />
+                    )}
                 </TabsContent>
                 <TabsContent value="headers" className="flex-1 mt-0 min-h-0">
                     <KeyValueTable data={response.headers} />

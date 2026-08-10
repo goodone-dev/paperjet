@@ -108,7 +108,7 @@ export interface WireProxyResponse {
     statusText: string;
     headers: Record<string, string>;
     cookies: Record<string, string>;
-    body: string;
+    body: number[];
     size: number;
     timing: WireProxyResponseTiming;
 }

@@ -13,6 +13,7 @@ export interface ResponseData {
     headers: ResponseKeyValue[];
     cookies: ResponseKeyValue[];
     body: string;
+    bytes: number[];
     error: boolean;
 }
 
