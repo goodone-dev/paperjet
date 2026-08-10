@@ -39,16 +39,33 @@ export function useRequestSend(
         try {
             const payload = buildRequestPayload(reqTab, envVars);
             const res: WireProxyResponse = await SendRequest(payload);
-            const elapsed = Math.max(0, Math.floor(performance.now() - start));
+
+            let bodyStr = '';
+            if (typeof res.body === 'string') {
+                try {
+                    const binString = atob(res.body);
+                    const bytes = new Uint8Array(binString.length);
+                    for (let i = 0; i < binString.length; i++) {
+                        bytes[i] = binString.charCodeAt(i);
+                    }
+                    bodyStr = new TextDecoder().decode(bytes);
+                } catch {
+                    bodyStr = res.body;
+                }
+            } else if (Array.isArray(res.body)) {
+                bodyStr = new TextDecoder().decode(new Uint8Array(res.body as number[]));
+            } else {
+                bodyStr = String(res.body || '');
+            }
 
             responseData = {
                 status: res.status,
                 statusText: res.statusText,
-                time: elapsed,
-                size: new Blob([res.body || '']).size,
+                time: Math.floor(res.timing.total_time / 1000000),
+                size: res.size,
                 headers: Object.entries(res.headers || {}).map(([key, value]) => ({ key, value })),
                 cookies: Object.entries(res.cookies || {}).map(([key, value]) => ({ key, value })),
-                body: res.body,
+                body: bodyStr,
                 error: false,
             };
 
@@ -73,7 +90,7 @@ export function useRequestSend(
 
         if (!reqTab.url) return;
         // Capture the complete request state so this entry can be replayed exactly
-        // (headers, params, path variables, auth, body — see HistoryEntry type).
+        // (headers, query params, path variables, auth, body — see HistoryEntry type).
         const saved = mapTabToSavePayload(reqTab);
         const entry: HistoryEntry = {
             id: `h-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -81,7 +98,7 @@ export function useRequestSend(
             name: reqTab.name,
             method: reqTab.method,
             url: reqTab.url,
-            params: saved.params,
+            queryParams: saved.query_params,
             pathVariables: saved.path_variables,
             headers: saved.headers,
             auth: saved.auth,

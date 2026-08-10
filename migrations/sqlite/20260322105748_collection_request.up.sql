@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS collection_requests (
     slug VARCHAR NOT NULL,
     method VARCHAR NOT NULL,
     url TEXT NOT NULL,
-    params BLOB NULL,
+    query_params BLOB NULL,
     path_variables BLOB NULL,
     auth BLOB NULL,
     headers BLOB NULL,

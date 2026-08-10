@@ -8,7 +8,7 @@ type CreateRequestRequest struct {
 	Name          string     `json:"name" validate:"required"`
 	Method        string     `json:"method" validate:"required"`
 	URL           string     `json:"url" validate:"required"`
-	Params        []KeyValue `json:"params"`
+	QueryParams   []KeyValue `json:"query_params"`
 	PathVariables []KeyValue `json:"path_variables"`
 	Auth          Auth       `json:"auth"`
 	Headers       []KeyValue `json:"headers"`
@@ -23,7 +23,7 @@ type UpdateRequestRequest struct {
 	Name          string     `json:"name" validate:"required"`
 	Method        string     `json:"method" validate:"required"`
 	URL           string     `json:"url" validate:"required"`
-	Params        []KeyValue `json:"params"`
+	QueryParams   []KeyValue `json:"query_params"`
 	PathVariables []KeyValue `json:"path_variables"`
 	Auth          Auth       `json:"auth"`
 	Headers       []KeyValue `json:"headers"`
@@ -38,7 +38,7 @@ type RequestResponse struct {
 	Slug          string     `json:"slug"`
 	Method        string     `json:"method"`
 	URL           string     `json:"url"`
-	Params        []KeyValue `json:"params"`
+	QueryParams   []KeyValue `json:"query_params"`
 	PathVariables []KeyValue `json:"path_variables"`
 	Auth          Auth       `json:"auth"`
 	Headers       []KeyValue `json:"headers"`
@@ -47,6 +47,7 @@ type RequestResponse struct {
 
 type KeyValue struct {
 	Key         string `json:"key" validate:"required"`
+	Type        string `json:"type" validate:"required"`
 	Value       string `json:"value"`
 	Description string `json:"description"`
 	Enabled     bool   `json:"enabled"`

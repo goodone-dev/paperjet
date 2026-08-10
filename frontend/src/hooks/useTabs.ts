@@ -13,7 +13,7 @@ const newRequestTemplate = (overrides: Partial<RequestTab> = {}): RequestTab => 
     name: overrides.name || 'Untitled Request',
     method: overrides.method || 'GET',
     url: overrides.url || '',
-    params: overrides.params || [{ id: 'p1', key: '', value: '', description: '', enabled: true }],
+    queryParams: overrides.queryParams || [{ id: 'p1', key: '', value: '', description: '', enabled: true }],
     pathVariables: overrides.pathVariables || ([] as KeyValueRow[]),
     headers: overrides.headers || [
         { id: 'h1', key: 'Accept', value: 'application/json', description: '', enabled: true },
@@ -23,6 +23,7 @@ const newRequestTemplate = (overrides: Partial<RequestTab> = {}): RequestTab => 
     bodyRaw: overrides.bodyRaw || null,
     bodyFormData: overrides.bodyFormData || [{ id: 'f1', key: '', value: '', description: '', enabled: true }],
     bodyUrlEncoded: overrides.bodyUrlEncoded || [{ id: 'u1', key: '', value: '', description: '', enabled: true }],
+    bodyBinary: overrides.bodyBinary ?? null,
     auth: overrides.auth || { type: 'none' },
     response: null,
     isSending: false,
@@ -40,13 +41,14 @@ function snapshot(t: RequestTab): RequestTabSnapshot {
         name: t.name,
         method: t.method,
         url: t.url,
-        params: JSON.parse(JSON.stringify(t.params || [])),
+        queryParams: JSON.parse(JSON.stringify(t.queryParams || [])),
         pathVariables: JSON.parse(JSON.stringify(t.pathVariables || [])),
         headers: JSON.parse(JSON.stringify(t.headers || [])),
         bodyType: t.bodyType,
         bodyRaw: t.bodyRaw,
         bodyFormData: JSON.parse(JSON.stringify(t.bodyFormData || [])),
         bodyUrlEncoded: JSON.parse(JSON.stringify(t.bodyUrlEncoded || [])),
+        bodyBinary: t.bodyBinary ?? null,
         auth: JSON.parse(JSON.stringify(t.auth || { type: 'none' })),
     };
 }

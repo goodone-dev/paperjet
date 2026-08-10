@@ -2,8 +2,7 @@ import type { BackendKeyValue, KeyValueRow, AuthConfig, BodyConfig } from '@/typ
 import type { BodyRaw, RequestTab } from '@/types/tab';
 import type { EnvVariable } from '@/types/environment';
 import type { HistoryEntry } from '@/types/history';
-import type { WireRequestResponse } from './api';
-import { resolveEnvVars } from './env-resolve';
+import type { WireRequestResponse, WireProxyPayload } from './api';
 
 interface OpenRequestMeta {
     colId: string | null;
@@ -46,7 +45,7 @@ export function mapBackendRequestToTab(full: WireRequestResponse, meta: OpenRequ
         name: full.name,
         method: full.method,
         url: full.url || '',
-        params: mapBackendKvsToRows(full.params, 'p', [
+        queryParams: mapBackendKvsToRows(full.query_params, 'p', [
             { id: 'p1', key: '', value: '', description: '', enabled: true },
         ]),
         headers: mapBackendKvsToRows(full.headers, 'h', [
@@ -61,6 +60,7 @@ export function mapBackendRequestToTab(full: WireRequestResponse, meta: OpenRequ
         bodyUrlEncoded: mapBackendKvsToRows(body?.url_encoded, 'u', [
             { id: 'u1', key: '', value: '', description: '', enabled: true },
         ]),
+        bodyBinary: body?.binary || null,
         pathVariables: mapBackendKvsToRows(full.path_variables, 'pv', []),
         auth: mapBackendAuth(full.auth),
         isDirty: false,
@@ -80,7 +80,7 @@ export function mapHistoryEntryToTab(entry: HistoryEntry): Partial<RequestTab> {
         name: entry.name || entry.url,
         method: entry.method,
         url: entry.url,
-        params: mapBackendKvsToRows(entry.params, 'p', [
+        queryParams: mapBackendKvsToRows(entry.queryParams, 'p', [
             { id: 'p1', key: '', value: '', description: '', enabled: true },
         ]),
         headers: mapBackendKvsToRows(entry.headers, 'h', [
@@ -95,6 +95,7 @@ export function mapHistoryEntryToTab(entry: HistoryEntry): Partial<RequestTab> {
         bodyUrlEncoded: mapBackendKvsToRows(body?.url_encoded, 'u', [
             { id: 'u1', key: '', value: '', description: '', enabled: true },
         ]),
+        bodyBinary: body?.binary || null,
         pathVariables: mapBackendKvsToRows(entry.pathVariables, 'pv', []),
         auth: mapBackendAuth(entry.auth),
         isDirty: false,
@@ -119,11 +120,12 @@ function tabAuthToBackend(auth: AuthConfig | undefined): AuthConfig {
     return base;
 }
 
-function tabBodyToBackend(tab: Pick<RequestTab, 'bodyType' | 'bodyRaw' | 'bodyFormData' | 'bodyUrlEncoded'>): BodyConfig {
+function tabBodyToBackend(tab: Pick<RequestTab, 'bodyType' | 'bodyRaw' | 'bodyFormData' | 'bodyUrlEncoded' | 'bodyBinary'>): BodyConfig {
     const body: any = { type: tab.bodyType || 'none' };
     if (tab.bodyType === 'raw') body.raw = { type: tab.bodyRaw?.type, value: tab.bodyRaw?.value };
     if (tab.bodyType === 'form-data') body.form_data = rowsToBackendKvs(tab.bodyFormData);
     if (tab.bodyType === 'x-www-form-urlencoded') body.url_encoded = rowsToBackendKvs(tab.bodyUrlEncoded);
+    if (tab.bodyType === 'binary') body.binary = tab.bodyBinary;
     return body;
 }
 
@@ -131,7 +133,7 @@ export interface BackendSavePayload {
     name: string;
     method: string;
     url: string;
-    params: BackendKeyValue[];
+    query_params: BackendKeyValue[];
     path_variables: BackendKeyValue[];
     auth: AuthConfig;
     headers: BackendKeyValue[];
@@ -147,7 +149,7 @@ export function mapTabToSavePayload(tab: RequestTab): BackendSavePayload {
         name: tab.name,
         method: tab.method,
         url: tab.url || '',
-        params: rowsToBackendKvs(tab.params),
+        query_params: rowsToBackendKvs(tab.queryParams),
         path_variables: rowsToBackendKvs(tab.pathVariables),
         auth: tabAuthToBackend(tab.auth),
         headers: rowsToBackendKvs(tab.headers),
@@ -155,87 +157,7 @@ export function mapTabToSavePayload(tab: RequestTab): BackendSavePayload {
     };
 }
 
-export interface SendPayload {
-    url: string;
-    method: string;
-    headers: Record<string, string>;
-    body: string;
-}
-
-/**
- * Compose the exact wire-level request (env vars resolved, path vars substituted,
- * auth headers injected, body encoded). Extracted from AppWorkspace.handleSend.
- */
-export function buildRequestPayload(tab: RequestTab, envVars: EnvVariable[]): SendPayload {
-    const resolve = (text: string) => resolveEnvVars(text, envVars);
-
-    const headers: Record<string, string> = (tab.headers || [])
-        .filter((h) => h.enabled && h.key)
-        .reduce<Record<string, string>>((acc, h) => {
-            acc[resolve(h.key)] = resolve(h.value);
-            return acc;
-        }, {});
-
-    // TODO: Binary and GraphQL Implementation
-
-    let bodyForm: KeyValueRow[] = []
-    switch (tab.bodyType) {
-        case 'form-data':
-            bodyForm = tab.bodyFormData || []
-            headers['Content-Type'] = 'multipart/form-data';
-            break;
-        case 'x-www-form-urlencoded':
-            bodyForm = tab.bodyUrlEncoded || []
-            headers['Content-Type'] = 'application/x-www-form-urlencoded';
-            break;
-    }
-
-    switch (tab.bodyRaw?.type) {
-        case 'json':
-            headers['Content-Type'] = 'application/json';
-            break;
-        case 'xml':
-            headers['Content-Type'] = 'application/xml';
-            break;
-        case 'html':
-            headers['Content-Type'] = 'text/html';
-            break;
-        case 'text':
-            headers['Content-Type'] = 'text/plain';
-            break;
-    }
-
-    let bodyData: string = ''
-    if (tab.bodyType === 'raw') {
-        bodyData = resolve(tab.bodyRaw?.value || '')
-    } else if (tab.bodyType.includes('form')) {
-        const searchParams = new URLSearchParams();
-        bodyForm.filter((h) => h.enabled && h.key).forEach((h) => searchParams.append(resolve(h.key), resolve(h.value)));
-        bodyData = searchParams.toString()
-    }
-
-    let finalUrl = resolve(tab.url || '');
-    (tab.pathVariables || [])
-        .filter((p) => p.enabled && p.key)
-        .forEach((p) => {
-            finalUrl = finalUrl.replace(new RegExp(`:${p.key}\\b`, 'g'), encodeURIComponent(resolve(p.value)));
-        });
-
-    // TODO: OAuth Implementation
-    const auth: any = tab.auth || { type: 'none' };
-    if (auth.type === 'bearer' && auth.token) {
-        headers['Authorization'] = `Bearer ${resolve(auth.token)}`;
-    } else if (auth.type === 'basic') {
-        const creds = btoa(`${resolve(auth.username || '')}:${resolve(auth.password || '')}`);
-        headers['Authorization'] = `Basic ${creds}`;
-    } else if (auth.type === 'apikey') {
-        headers[resolve(auth.key || 'X-API-Key')] = resolve(auth.apiValue || '');
-    }
-
-    return {
-        url: finalUrl,
-        method: tab.method,
-        headers,
-        body: bodyData,
-    };
+export function buildRequestPayload(tab: RequestTab, envVars: EnvVariable[]): WireProxyPayload {
+    const base = mapTabToSavePayload(tab);
+    return { ...base, env_variables: envVars };
 }

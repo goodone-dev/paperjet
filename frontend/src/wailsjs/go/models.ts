@@ -81,6 +81,7 @@ export namespace collection {
 	
 	export class KeyValue {
 	    key: string;
+	    type: string;
 	    value: string;
 	    description: string;
 	    enabled: boolean;
@@ -92,6 +93,7 @@ export namespace collection {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.key = source["key"];
+	        this.type = source["type"];
 	        this.value = source["value"];
 	        this.description = source["description"];
 	        this.enabled = source["enabled"];
@@ -324,7 +326,7 @@ export namespace collection {
 	    name: string;
 	    method: string;
 	    url: string;
-	    params: KeyValue[];
+	    query_params: KeyValue[];
 	    path_variables: KeyValue[];
 	    auth: Auth;
 	    headers: KeyValue[];
@@ -341,7 +343,7 @@ export namespace collection {
 	        this.name = source["name"];
 	        this.method = source["method"];
 	        this.url = source["url"];
-	        this.params = this.convertValues(source["params"], KeyValue);
+	        this.query_params = this.convertValues(source["query_params"], KeyValue);
 	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
 	        this.auth = this.convertValues(source["auth"], Auth);
 	        this.headers = this.convertValues(source["headers"], KeyValue);
@@ -469,7 +471,7 @@ export namespace collection {
 	    slug: string;
 	    method: string;
 	    url: string;
-	    params: KeyValue[];
+	    query_params: KeyValue[];
 	    path_variables: KeyValue[];
 	    auth: Auth;
 	    headers: KeyValue[];
@@ -488,7 +490,7 @@ export namespace collection {
 	        this.slug = source["slug"];
 	        this.method = source["method"];
 	        this.url = source["url"];
-	        this.params = this.convertValues(source["params"], KeyValue);
+	        this.query_params = this.convertValues(source["query_params"], KeyValue);
 	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
 	        this.auth = this.convertValues(source["auth"], Auth);
 	        this.headers = this.convertValues(source["headers"], KeyValue);
@@ -517,7 +519,7 @@ export namespace collection {
 	    name: string;
 	    method: string;
 	    url: string;
-	    params: KeyValue[];
+	    query_params: KeyValue[];
 	    path_variables: KeyValue[];
 	    auth: Auth;
 	    headers: KeyValue[];
@@ -532,7 +534,7 @@ export namespace collection {
 	        this.name = source["name"];
 	        this.method = source["method"];
 	        this.url = source["url"];
-	        this.params = this.convertValues(source["params"], KeyValue);
+	        this.query_params = this.convertValues(source["query_params"], KeyValue);
 	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
 	        this.auth = this.convertValues(source["auth"], Auth);
 	        this.headers = this.convertValues(source["headers"], KeyValue);
@@ -690,14 +692,18 @@ export namespace environment {
 
 }
 
-export namespace main {
+export namespace proxy {
 	
 	export class ProxyPayload {
-	    url: string;
+	    name: string;
 	    method: string;
-	    headers: Record<string, string>;
-	    body: string;
-	    files: Record<string, string>;
+	    url: string;
+	    query_params: collection.KeyValue[];
+	    path_variables: collection.KeyValue[];
+	    auth: collection.Auth;
+	    headers: collection.KeyValue[];
+	    body: collection.Body;
+	    env_variables: environment.EnvironmentVariable[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ProxyPayload(source);
@@ -705,11 +711,59 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.url = source["url"];
+	        this.name = source["name"];
 	        this.method = source["method"];
-	        this.headers = source["headers"];
-	        this.body = source["body"];
-	        this.files = source["files"];
+	        this.url = source["url"];
+	        this.query_params = this.convertValues(source["query_params"], collection.KeyValue);
+	        this.path_variables = this.convertValues(source["path_variables"], collection.KeyValue);
+	        this.auth = this.convertValues(source["auth"], collection.Auth);
+	        this.headers = this.convertValues(source["headers"], collection.KeyValue);
+	        this.body = this.convertValues(source["body"], collection.Body);
+	        this.env_variables = this.convertValues(source["env_variables"], environment.EnvironmentVariable);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Timing {
+	    dns_lookup: number;
+	    tcp_conn_time: number;
+	    tls_handshake: number;
+	    conn_time: number;
+	    conn_idle_time: number;
+	    server_time: number;
+	    response_time: number;
+	    total_time: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Timing(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dns_lookup = source["dns_lookup"];
+	        this.tcp_conn_time = source["tcp_conn_time"];
+	        this.tls_handshake = source["tls_handshake"];
+	        this.conn_time = source["conn_time"];
+	        this.conn_idle_time = source["conn_idle_time"];
+	        this.server_time = source["server_time"];
+	        this.response_time = source["response_time"];
+	        this.total_time = source["total_time"];
 	    }
 	}
 	export class ProxyResponse {
@@ -717,7 +771,9 @@ export namespace main {
 	    statusText: string;
 	    headers: Record<string, string>;
 	    cookies: Record<string, string>;
-	    body: string;
+	    body: number[];
+	    size: number;
+	    timing: Timing;
 	
 	    static createFrom(source: any = {}) {
 	        return new ProxyResponse(source);
@@ -730,7 +786,27 @@ export namespace main {
 	        this.headers = source["headers"];
 	        this.cookies = source["cookies"];
 	        this.body = source["body"];
+	        this.size = source["size"];
+	        this.timing = this.convertValues(source["timing"], Timing);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

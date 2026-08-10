@@ -49,7 +49,7 @@ export interface WireRequestResponse {
     slug: string;
     method: string;
     url: string;
-    params: BackendKeyValue[];
+    query_params: BackendKeyValue[];
     path_variables: BackendKeyValue[];
     auth: AuthConfig;
     headers: BackendKeyValue[];
@@ -81,10 +81,26 @@ export interface WireWorkspaceResponse {
 }
 
 export interface WireProxyPayload {
-    url: string;
+    name: string;
     method: string;
-    headers: Record<string, string>;
-    body: string;
+    url: string;
+    query_params: BackendKeyValue[];
+    path_variables: BackendKeyValue[];
+    auth: AuthConfig;
+    headers: BackendKeyValue[];
+    body: BodyConfig;
+    env_variables: EnvVariable[];
+}
+
+export interface WireProxyResponseTiming {
+    dns_lookup: number;
+    tcp_conn_time: number;
+    tls_handshake: number;
+    conn_time: number;
+    conn_idle_time: number;
+    server_time: number;
+    response_time: number;
+    total_time: number;
 }
 
 export interface WireProxyResponse {
@@ -93,6 +109,8 @@ export interface WireProxyResponse {
     headers: Record<string, string>;
     cookies: Record<string, string>;
     body: string;
+    size: number;
+    timing: WireProxyResponseTiming;
 }
 
 // ─── Payload shapes for outgoing requests ────────────────────────────────
@@ -114,7 +132,7 @@ export interface CreateRequestPayload {
     name: string;
     method: string;
     url: string;
-    params: BackendKeyValue[];
+    query_params: BackendKeyValue[];
     path_variables: BackendKeyValue[];
     auth: AuthConfig;
     headers: BackendKeyValue[];
@@ -125,7 +143,7 @@ export interface UpdateRequestPayload {
     name: string;
     method: string;
     url: string;
-    params: BackendKeyValue[];
+    query_params: BackendKeyValue[];
     path_variables: BackendKeyValue[];
     auth: AuthConfig;
     headers: BackendKeyValue[];
@@ -243,6 +261,9 @@ export const DuplicateRequest = (id: string): Promise<WireRequestResponse> => ap
 
 // Proxy (Send)
 export const SendRequest = (payload: WireProxyPayload): Promise<WireProxyResponse> => api.SendRequest(payload);
+
+// File system
+export const SelectFile = (): Promise<string> => api.SelectFile();
 
 // Re-export the runtime Workspace type for convenience — the wire shape
 // carries a `slug` that the UI doesn't need, so callers usually widen to Workspace.

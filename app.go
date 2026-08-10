@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/goodone-dev/paperjet/internal/domain/collection"
 	"github.com/goodone-dev/paperjet/internal/domain/environment"
+	"github.com/goodone-dev/paperjet/internal/domain/proxy"
 	"github.com/goodone-dev/paperjet/internal/domain/workspace"
 	"github.com/goodone-dev/paperjet/internal/infrastructure/logger"
 	"github.com/google/uuid"
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -17,6 +18,7 @@ type App struct {
 	workspaceUsecase   workspace.WorkspaceUsecase
 	collectionUsecase  collection.CollectionUsecase
 	environmentUsecase environment.EnvironmentUsecase
+	proxyUsecase       proxy.ProxyUsecase
 }
 
 // NewApp creates a new App application struct
@@ -342,67 +344,6 @@ func (a *App) UpdateFolderSortOrder(id string, name string, sortOrder string) (*
 
 // ── Request ───────────────────────────────────────────────────────────────
 
-type ProxyPayload struct {
-	URL     string            `json:"url"`
-	Method  string            `json:"method"`
-	Headers map[string]string `json:"headers"`
-	Body    string            `json:"body"`
-	Files   map[string]string `json:"files"`
-}
-
-type ProxyResponse struct {
-	Status     int               `json:"status"`
-	StatusText string            `json:"statusText"`
-	Headers    map[string]string `json:"headers"`
-	Cookies    map[string]string `json:"cookies"`
-	Body       string            `json:"body"`
-}
-
-func (a *App) SendRequest(payload ProxyPayload) (*ProxyResponse, error) {
-	client := resty.New()
-	// client.Debug = true
-
-	req := client.R()
-	for k, v := range payload.Headers {
-		req.SetHeader(k, v)
-	}
-
-	if payload.Body != "" {
-		req.SetBody(payload.Body)
-	}
-
-	for k, v := range payload.Files {
-		req.SetFile(k, v)
-	}
-
-	resp, err := req.Execute(payload.Method, payload.URL)
-	if err != nil {
-		return nil, err
-	}
-
-	headers := make(map[string]string)
-	for k, v := range resp.Header() {
-		if len(v) > 0 {
-			headers[k] = v[0]
-		}
-	}
-
-	cookies := make(map[string]string)
-	for _, cookie := range resp.Cookies() {
-		cookies[cookie.Name] = cookie.Value
-	}
-
-	logger.Debugf(a.ctx, "Request '%s %s' sent", payload.Method, payload.URL).Write()
-
-	return &ProxyResponse{
-		Status:     resp.StatusCode(),
-		StatusText: resp.Status(),
-		Headers:    headers,
-		Cookies:    cookies,
-		Body:       string(resp.Body()),
-	}, nil
-}
-
 func (a *App) CreateRequest(payload collection.CreateRequestRequest) (*collection.RequestResponse, error) {
 	request, err := a.collectionUsecase.CreateRequest(a.ctx, payload)
 	if err != nil {
@@ -585,4 +526,28 @@ func (a *App) DuplicateEnvironment(id string) (*environment.EnvironmentResponse,
 	logger.Debugf(a.ctx, "Environment '%s' duplicated", env.Name).Write()
 
 	return env, nil
+}
+
+// ── Proxy ───────────────────────────────────────────────────────────────
+
+func (a *App) SendRequest(payload proxy.ProxyPayload) (*proxy.ProxyResponse, error) {
+	res, err := a.proxyUsecase.SendRequest(a.ctx, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Debugf(a.ctx, "Request '%s (%s %s)' sent", payload.Name, payload.Method, payload.URL).Write()
+
+	return res, nil
+}
+
+// ── File System ──────────────────────────────────────────────────────────────
+
+// SelectFile opens a native OS file picker and returns the absolute path of the
+// chosen file. Returns an empty string if the user cancels.
+func (a *App) SelectFile() (string, error) {
+	path, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
+		Title: "Select File",
+	})
+	return path, err
 }

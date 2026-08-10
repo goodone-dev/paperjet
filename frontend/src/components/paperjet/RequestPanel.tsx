@@ -29,8 +29,8 @@ export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, o
         const newUrl = e.target.value;
         const oldUrl = request.url || '';
         const pathVariables = syncPathVariablesFromUrl(newUrl, oldUrl, request.pathVariables || []);
-        const params = syncParamsFromUrl(newUrl, request.params);
-        update({ url: newUrl, pathVariables, params });
+        const queryParams = syncParamsFromUrl(newUrl, request.queryParams);
+        update({ url: newUrl, pathVariables, queryParams });
     };
 
     // Save-button tooltip: shortcut hint if this is a saved request, otherwise an explanation.
@@ -136,7 +136,7 @@ export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, o
                             {
                                 id: 'params',
                                 label: 'Params',
-                                count: request.params.filter((p) => p.key).length + (request.pathVariables || []).filter((p) => p.key).length,
+                                count: request.queryParams.filter((p) => p.key).length + (request.pathVariables || []).filter((p) => p.key).length,
                             },
                             { id: 'auth', label: 'Authorization', count: 0 },
                             { id: 'headers', label: 'Headers', count: request.headers.filter((h) => h.key).length },
@@ -168,7 +168,7 @@ export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, o
                         <div>
                             <SectionHeader title="Query Params" description="Append key-value pairs to the request URL" />
                             <KeyValueEditor
-                                rows={request.params}
+                                rows={request.queryParams}
                                 envVariables={envVariables}
                                 onChange={(rows) => {
                                     let currentUrl = request.url || '';
@@ -178,7 +178,7 @@ export const RequestPanel: React.FC<RequestPanelProps> = ({ request, onUpdate, o
                                     rows.filter((p) => p.enabled && (p.key || p.value)).forEach((p) => qp.append(p.key, p.value));
                                     const qs = qp.toString();
                                     const newUrl = qs ? `${baseUrl}?${qs}` : baseUrl;
-                                    update({ params: rows, url: newUrl });
+                                    update({ queryParams: rows, url: newUrl });
                                 }}
                             />
                         </div>

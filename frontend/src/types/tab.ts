@@ -5,13 +5,14 @@ export interface RequestTabSnapshot {
     name: string;
     method: HttpMethod | string;
     url: string;
-    params: KeyValueRow[];
+    queryParams: KeyValueRow[];
     pathVariables: KeyValueRow[];
     headers: KeyValueRow[];
     bodyType: 'none' | 'raw' | 'form-data' | 'x-www-form-urlencoded' | 'binary' | 'graphql';
     bodyRaw: BodyRaw | null;
     bodyFormData: KeyValueRow[];
     bodyUrlEncoded: KeyValueRow[];
+    bodyBinary: string | null;
     auth: AuthConfig;
 }
 
@@ -29,13 +30,14 @@ export interface RequestTab {
     name: string;
     method: HttpMethod | string;
     url: string;
-    params: KeyValueRow[];
+    queryParams: KeyValueRow[];
     pathVariables: KeyValueRow[];
     headers: KeyValueRow[];
     bodyType: 'none' | 'raw' | 'form-data' | 'x-www-form-urlencoded' | 'binary' | 'graphql';
     bodyRaw: BodyRaw | null;
     bodyFormData: KeyValueRow[];
     bodyUrlEncoded: KeyValueRow[];
+    bodyBinary: string | null;
     auth: AuthConfig;
     response: ResponseData | null;
     isSending: boolean;

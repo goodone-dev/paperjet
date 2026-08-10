@@ -9,6 +9,7 @@ import { CodeEditor } from '../CodeEditor';
 import { beautify } from '@/lib/raw-beautifier';
 import type { BodyRaw, RequestTab } from '@/types/tab';
 import type { EnvVariable } from '@/types/environment';
+import { BinaryFilePicker } from '../BinaryFilePicker';
 
 interface BodyEditorProps {
     request: RequestTab;
@@ -117,11 +118,10 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
                         />
                     )}
                     {request.bodyType === 'binary' && (
-                        <div className="rounded-lg border border-dashed border-border bg-secondary/40 p-12 text-center">
-                            <Button variant="outline" size="sm">
-                                Select File
-                            </Button>
-                        </div>
+                        <BinaryFilePicker
+                            filePath={request.bodyBinary}
+                            onChange={(path) => update({ bodyBinary: path })}
+                        />
                     )}
                     {request.bodyType === 'graphql' && (
                         <div className="rounded-lg border border-border bg-card overflow-hidden">

@@ -6,6 +6,7 @@ import (
 
 	collectionRepoImpl "github.com/goodone-dev/paperjet/internal/application/collection/repository"
 	collectionUsecaseImpl "github.com/goodone-dev/paperjet/internal/application/collection/usecase"
+	proxyUsecaseImpl "github.com/goodone-dev/paperjet/internal/application/proxy/usecase"
 	workspaceRepoImpl "github.com/goodone-dev/paperjet/internal/application/workspace/repository"
 	workspaceUsecaseImpl "github.com/goodone-dev/paperjet/internal/application/workspace/usecase"
 	"github.com/goodone-dev/paperjet/internal/config"
@@ -52,6 +53,7 @@ func main() {
 	requestBaseRepo := sqlite.NewBaseRepository[gorm.DB, uuid.UUID, collection.CollectionRequest](dbConn)
 	requestRepo := collectionRepoImpl.NewCollectionRequestRepository(requestBaseRepo)
 	collectionUsecase := collectionUsecaseImpl.NewCollectionUsecase(collectionRepo, folderRepo, requestRepo)
+	proxyUsecase := proxyUsecaseImpl.NewProxyUsecase()
 
 	// Environment Dependency Injection
 	environmentBaseRepo := sqlite.NewBaseRepository[gorm.DB, uuid.UUID, environment.Environment](dbConn)
@@ -63,6 +65,7 @@ func main() {
 		workspaceUsecase:   workspaceUsecase,
 		collectionUsecase:  collectionUsecase,
 		environmentUsecase: environmentUsecase,
+		proxyUsecase:       proxyUsecase,
 	})
 
 	menu := NewMenu(app)

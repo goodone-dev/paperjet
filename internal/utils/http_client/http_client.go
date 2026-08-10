@@ -2,28 +2,28 @@ package httpclient
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 )
 
-type httpClient struct {
+type HttpClient struct {
 	httpClient *resty.Client
 }
 
-func NewHttpClient() *httpClient {
-	return &httpClient{
+func NewHttpClient() *HttpClient {
+	return &HttpClient{
 		httpClient: resty.New().SetDebug(false),
 	}
 }
 
 type HttpRequest struct {
-	Method  string
-	URL     string
-	Headers map[string]string
-	Body    any
-	Files   map[string]string
+	Method   string
+	URL      string
+	Headers  map[string]string
+	Body     any
+	FormData map[string]string
+	Files    map[string]string
 }
 
 type HttpResponse struct {
@@ -47,10 +47,13 @@ type Timing struct {
 	TotalTime    time.Duration
 }
 
-func (h *httpClient) Execute(ctx context.Context, payload HttpRequest) (*HttpResponse, error) {
+func (h *HttpClient) Execute(ctx context.Context, payload HttpRequest) (*HttpResponse, error) {
 	req := h.httpClient.NewRequest().SetContext(ctx).EnableTrace()
 	if payload.Body != nil {
 		req.SetBody(payload.Body)
+	}
+	if len(payload.FormData) > 0 {
+		req.SetFormData(payload.FormData)
 	}
 	if len(payload.Headers) > 0 {
 		req.SetHeaders(payload.Headers)
@@ -62,10 +65,6 @@ func (h *httpClient) Execute(ctx context.Context, payload HttpRequest) (*HttpRes
 	res, err := req.Execute(payload.Method, payload.URL)
 	if err != nil {
 		return nil, err
-	}
-
-	if res.IsError() {
-		return nil, fmt.Errorf("failed to request %s %s: %s", payload.Method, payload.URL, res.Error())
 	}
 
 	headers := make(map[string]string)

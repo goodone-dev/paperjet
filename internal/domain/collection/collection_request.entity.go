@@ -13,7 +13,7 @@ type CollectionRequest struct {
 	Slug          string     `json:"slug"`
 	Method        string     `json:"method"`
 	URL           string     `json:"url"`
-	Params        []byte     `json:"params"`
+	QueryParams   []byte     `json:"query_params"`
 	PathVariables []byte     `json:"path_variables"`
 	Auth          []byte     `json:"auth"`
 	Headers       []byte     `json:"headers"`

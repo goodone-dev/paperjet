@@ -30,12 +30,13 @@ export interface NoneBody { type: 'none' }
 export interface RawBody { type: 'raw'; raw?: { type: string; value: string } }
 export interface FormDataBody { type: 'form-data'; form_data?: BackendKeyValue[] }
 export interface UrlEncodedBody { type: 'x-www-form-urlencoded'; url_encoded?: BackendKeyValue[] }
-export interface BinaryBody { type: 'binary' }
+export interface BinaryBody { type: 'binary'; binary?: string }
 export interface GraphqlBody { type: 'graphql' }
 export type BodyConfig = NoneBody | RawBody | FormDataBody | UrlEncodedBody | BinaryBody | GraphqlBody;
 
 export interface BackendKeyValue {
     key: string;
+    type?: string;
     value: string;
     description?: string;
     enabled?: boolean;
@@ -46,7 +47,7 @@ export interface BackendRequest {
     name: string;
     method: HttpMethod | string;
     url: string;
-    params?: BackendKeyValue[];
+    query_params?: BackendKeyValue[];
     path_variables?: BackendKeyValue[];
     auth?: AuthConfig;
     headers?: BackendKeyValue[];

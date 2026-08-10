@@ -3,7 +3,7 @@
 import {collection} from '../models';
 import {environment} from '../models';
 import {workspace} from '../models';
-import {main} from '../models';
+import {proxy} from '../models';
 
 export function CreateCollection(arg1:collection.CreateCollectionRequest):Promise<collection.CollectionResponse>;
 
@@ -59,7 +59,9 @@ export function RenameWorkspace(arg1:string,arg2:string):Promise<workspace.Works
 
 export function ReorderCollectionItems(arg1:string,arg2:string,arg3:collection.ReorderItemsRequest):Promise<void>;
 
-export function SendRequest(arg1:main.ProxyPayload):Promise<main.ProxyResponse>;
+export function SelectFile():Promise<string>;
+
+export function SendRequest(arg1:proxy.ProxyPayload):Promise<proxy.ProxyResponse>;
 
 export function UpdateCollectionFavorite(arg1:string,arg2:boolean):Promise<collection.CollectionResponse>;
 

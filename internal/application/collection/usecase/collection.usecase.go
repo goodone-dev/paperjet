@@ -333,7 +333,7 @@ func (u *collectionUsecase) Duplicate(ctx context.Context, ID uuid.UUID) (*colle
 			Slug:          req.Slug,
 			Method:        req.Method,
 			URL:           req.URL,
-			Params:        req.Params,
+			QueryParams:   req.QueryParams,
 			PathVariables: req.PathVariables,
 			Auth:          req.Auth,
 			Headers:       req.Headers,
@@ -627,7 +627,7 @@ func (u *collectionUsecase) DuplicateFolder(ctx context.Context, ID uuid.UUID) (
 			Slug:          req.Slug,
 			Method:        req.Method,
 			URL:           req.URL,
-			Params:        req.Params,
+			QueryParams:   req.QueryParams,
 			PathVariables: req.PathVariables,
 			Auth:          req.Auth,
 			Headers:       req.Headers,
@@ -673,14 +673,14 @@ func toRequestResponse(r collection.CollectionRequest) collection.RequestRespons
 		URL:          r.URL,
 	}
 
-	json.Unmarshal(r.Params, &res.Params)
+	json.Unmarshal(r.QueryParams, &res.QueryParams)
 	json.Unmarshal(r.PathVariables, &res.PathVariables)
 	json.Unmarshal(r.Auth, &res.Auth)
 	json.Unmarshal(r.Headers, &res.Headers)
 	json.Unmarshal(r.Body, &res.Body)
 
-	if res.Params == nil {
-		res.Params = make([]collection.KeyValue, 0)
+	if res.QueryParams == nil {
+		res.QueryParams = make([]collection.KeyValue, 0)
 	}
 	if res.PathVariables == nil {
 		res.PathVariables = make([]collection.KeyValue, 0)
@@ -714,7 +714,7 @@ func (u *collectionUsecase) CreateRequest(ctx context.Context, payload collectio
 		return nil, err
 	}
 
-	bParams, _ := json.Marshal(payload.Params)
+	bQryParams, _ := json.Marshal(payload.QueryParams)
 	bPathVars, _ := json.Marshal(payload.PathVariables)
 	bAuth, _ := json.Marshal(payload.Auth)
 	bHeaders, _ := json.Marshal(payload.Headers)
@@ -727,7 +727,7 @@ func (u *collectionUsecase) CreateRequest(ctx context.Context, payload collectio
 		Slug:          slug,
 		Method:        payload.Method,
 		URL:           payload.URL,
-		Params:        bParams,
+		QueryParams:   bQryParams,
 		PathVariables: bPathVars,
 		Auth:          bAuth,
 		Headers:       bHeaders,
@@ -795,7 +795,7 @@ func (u *collectionUsecase) UpdateRequest(ctx context.Context, ID uuid.UUID, pay
 		return nil, err
 	}
 
-	bParams, _ := json.Marshal(payload.Params)
+	bQryParams, _ := json.Marshal(payload.QueryParams)
 	bPathVars, _ := json.Marshal(payload.PathVariables)
 	bAuth, _ := json.Marshal(payload.Auth)
 	bHeaders, _ := json.Marshal(payload.Headers)
@@ -806,7 +806,7 @@ func (u *collectionUsecase) UpdateRequest(ctx context.Context, ID uuid.UUID, pay
 		"slug":           strings.ToLower(strings.ReplaceAll(payload.Name, " ", "-")),
 		"method":         payload.Method,
 		"url":            payload.URL,
-		"params":         bParams,
+		"query_params":   bQryParams,
 		"path_variables": bPathVars,
 		"auth":           bAuth,
 		"headers":        bHeaders,
@@ -850,7 +850,7 @@ func (u *collectionUsecase) DuplicateRequest(ctx context.Context, ID uuid.UUID) 
 		Slug:          req.Slug + "-copy",
 		Method:        req.Method,
 		URL:           req.URL,
-		Params:        req.Params,
+		QueryParams:   req.QueryParams,
 		PathVariables: req.PathVariables,
 		Auth:          req.Auth,
 		Headers:       req.Headers,

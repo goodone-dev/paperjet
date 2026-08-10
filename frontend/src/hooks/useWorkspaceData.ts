@@ -616,7 +616,7 @@ export function useWorkspaceData() {
                         name,
                         method: 'GET',
                         url: '',
-                        params: [],
+                        query_params: [],
                         path_variables: [],
                         auth: { type: 'none' },
                         headers: [],

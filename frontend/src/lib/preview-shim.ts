@@ -28,7 +28,7 @@ interface WsRequest {
     slug: string;
     method: string;
     url: string;
-    params: KV[];
+    query_params: KV[];
     path_variables: KV[];
     auth: any;
     headers: KV[];
@@ -110,7 +110,7 @@ function loadDB(): DB {
                         slug: 'sign-in',
                         method: 'POST',
                         url: 'https://example.com/api/signin',
-                        params: [],
+                        query_params: [],
                         path_variables: [],
                         auth: { type: 'none' },
                         headers: [],
@@ -420,7 +420,7 @@ const shim = {
             slug: slugify(p.name),
             method: p.method || 'GET',
             url: p.url || '',
-            params: p.params || [],
+            query_params: p.query_params || [],
             path_variables: p.path_variables || [],
             auth: p.auth || { type: 'none' },
             headers: p.headers || [],
@@ -438,7 +438,7 @@ const shim = {
                     name: p.name ?? r.name,
                     method: p.method ?? r.method,
                     url: p.url ?? r.url,
-                    params: p.params ?? r.params,
+                    query_params: p.query_params ?? r.query_params,
                     path_variables: p.path_variables ?? r.path_variables,
                     auth: p.auth ?? r.auth,
                     headers: p.headers ?? r.headers,

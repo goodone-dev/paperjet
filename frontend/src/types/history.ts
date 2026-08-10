@@ -12,7 +12,7 @@ export interface HistoryEntry {
     url: string;
     name?: string;
     // Full request payload — enables one-click replay.
-    params?: BackendKeyValue[];
+    queryParams?: BackendKeyValue[];
     pathVariables?: BackendKeyValue[];
     headers?: BackendKeyValue[];
     auth?: AuthConfig;
