@@ -394,3 +394,189 @@ code,
     background-color: hsl(var(--primary) / 0.25) !important;
     outline: 1px solid hsl(var(--primary) / 0.5) !important;
 }
+
+/* react-doc-viewer PDF controls — match shadcn Button ghost style */
+#react-doc-viewer {
+    background-color: transparent !important;
+}
+
+#pdf-renderer {
+    background-color: hsl(var(--background)) !important;
+}
+
+#pdf-controls {
+    background-color: hsl(var(--card)) !important;
+    border-bottom: 1px solid hsl(var(--border)) !important;
+    box-shadow: var(--shadow-sm) !important;
+    padding: 8px 12px !important;
+    gap: 6px !important;
+}
+
+#pdf-controls > * {
+    margin-left: 0 !important;
+}
+
+#pdf-controls button,
+#pdf-controls a {
+    background: transparent !important;
+    border: none !important;
+    border-radius: calc(var(--radius) - 2px) !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background-color 150ms, color 150ms !important;
+    cursor: pointer !important;
+}
+
+#pdf-controls button:hover,
+#pdf-controls a:hover {
+    background-color: hsl(var(--accent)) !important;
+}
+
+#pdf-controls button:disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    background: transparent !important;
+}
+
+#pdf-controls button:disabled:hover {
+    background: transparent !important;
+}
+
+/* PDF control icon sizing */
+#pdf-pagination-prev svg,
+#pdf-pagination-next svg {
+    width: 14px !important;
+    height: 14px !important;
+}
+
+#pdf-zoom-out svg,
+#pdf-zoom-in svg {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+#pdf-zoom-reset svg,
+#pdf-toggle-pagination svg {
+    width: 19px !important;
+    height: 19px !important;
+}
+
+#pdf-download svg {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Fallback for any other svgs */
+#pdf-controls button svg,
+#pdf-controls a svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+
+/* Fill colors */
+#pdf-controls button svg path,
+#pdf-controls button svg polygon,
+#pdf-controls a svg path,
+#pdf-controls a svg polygon {
+    fill: hsl(var(--foreground)) !important;
+}
+
+#pdf-controls button:hover svg path,
+#pdf-controls button:hover svg polygon,
+#pdf-controls a:hover svg path,
+#pdf-controls a:hover svg polygon {
+    fill: hsl(var(--accent-foreground)) !important;
+}
+
+#pdf-controls button:disabled svg path,
+#pdf-controls button:disabled svg polygon {
+    fill: hsl(var(--muted-foreground)) !important;
+}
+
+#pdf-pagination {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin-right: 8px !important;
+}
+
+#pdf-pagination-prev,
+#pdf-pagination-next {
+    background: transparent !important;
+    border: none !important;
+    border-radius: calc(var(--radius) - 2px) !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background-color 150ms !important;
+    cursor: pointer !important;
+}
+
+#pdf-pagination-prev:hover,
+#pdf-pagination-next:hover {
+    background-color: hsl(var(--accent)) !important;
+}
+
+#pdf-pagination-prev:disabled,
+#pdf-pagination-next:disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+}
+
+#pdf-pagination-prev svg path,
+#pdf-pagination-prev svg polygon,
+#pdf-pagination-next svg path,
+#pdf-pagination-next svg polygon {
+    fill: hsl(var(--foreground)) !important;
+}
+
+#pdf-pagination-prev:hover svg path,
+#pdf-pagination-prev:hover svg polygon,
+#pdf-pagination-next:hover svg path,
+#pdf-pagination-next:hover svg polygon {
+    fill: hsl(var(--accent-foreground)) !important;
+}
+
+#pdf-pagination-prev:disabled svg path,
+#pdf-pagination-prev:disabled svg polygon,
+#pdf-pagination-next:disabled svg path,
+#pdf-pagination-next:disabled svg polygon {
+    fill: hsl(var(--muted-foreground)) !important;
+}
+
+#pdf-pagination-info {
+    color: hsl(var(--muted-foreground)) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    padding: 0 8px !important;
+}
+
+#file-name {
+    color: hsl(var(--muted-foreground)) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 13px !important;
+}
+
+#loading-renderer {
+    background-color: transparent !important;
+}
+
+#no-renderer {
+    color: hsl(var(--muted-foreground)) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+#no-renderer-download {
+    color: hsl(var(--primary)) !important;
+}

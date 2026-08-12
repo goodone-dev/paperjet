@@ -204,6 +204,7 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
                         <BodyPreview
                             body={response.bytes}
                             contentType={response.headers?.find((h) => h.key.toLowerCase() === 'content-type')?.value}
+                            isMaximized={isMaximized}
                         />
                     ) : (
                         <CodeEditor
