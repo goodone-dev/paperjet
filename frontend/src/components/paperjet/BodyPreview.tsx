@@ -1,39 +1,27 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
-import DocViewer, { DocViewerRenderers } from '@cyntler/react-doc-viewer';
+import { DocViewer } from 'anyview';
+import 'anyview/styles';
 
 interface BodyPreviewProps {
     body: number[];
     contentType?: string;
-    isMaximized?: boolean;
 }
 
-export const BodyPreview: React.FC<BodyPreviewProps> = ({ body, contentType, isMaximized }) => {
-    const [docs, setDocs] = useState<{ uri: string; fileName: string; fileType: string }[]>([]);
+export const BodyPreview: React.FC<BodyPreviewProps> = ({ body, contentType }) => {
+    const [file, setFile] = useState<File | null>(null);
 
     useEffect(() => {
         if (!body || body.length === 0) {
-            setDocs([]);
+            setFile(null);
             return;
         }
 
         const mimeType = contentType?.split(';')[0].trim() || 'text/plain';
         const uint8Array = new Uint8Array(body);
         const blob = new Blob([uint8Array], { type: mimeType });
-        const uri = URL.createObjectURL(blob);
+        const newFile = new File([blob], 'response' + getExtension(mimeType), { type: mimeType });
 
-        setDocs([
-            {
-                uri,
-                fileName: 'response' + getExtension(mimeType),
-                fileType: mimeType,
-            },
-        ]);
-
-        return () => {
-            URL.revokeObjectURL(uri);
-        };
+        setFile(newFile);
     }, [body, contentType]);
 
     if (!body || body.length === 0) {
@@ -46,25 +34,12 @@ export const BodyPreview: React.FC<BodyPreviewProps> = ({ body, contentType, isM
 
     return (
         <div className="h-full w-full overflow-auto">
-            {docs.length > 0 && (
+            {file && (
                 <DocViewer
-                    key={isMaximized ? 'max' : 'min'}
-                    documents={docs}
-                    pluginRenderers={DocViewerRenderers}
-                    config={{
-                        header: {
-                            disableHeader: true,
-                        },
-                    }}
-                    theme={{
-                        primary: 'transparent',
-                        secondary: 'hsl(var(--background))',
-                        tertiary: 'hsl(var(--card))',
-                        textPrimary: 'hsl(var(--foreground))',
-                        textSecondary: 'hsl(var(--muted-foreground))',
-                        disableThemeScrollbar: true,
-                    }}
-                    style={{ height: '100%', width: '100%', overflow: 'auto', backgroundColor: 'transparent' }}
+                    source={{ kind: 'file', file }}
+                    theme="light"
+                    showToolbar={false}
+                    showSidebar={false}
                 />
             )}
         </div>
