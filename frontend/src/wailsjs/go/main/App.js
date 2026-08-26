@@ -10,6 +10,10 @@ export function CreateEnvironment(arg1) {
   return window['go']['main']['App']['CreateEnvironment'](arg1);
 }
 
+export function CreateExample(arg1) {
+  return window['go']['main']['App']['CreateExample'](arg1);
+}
+
 export function CreateFolder(arg1) {
   return window['go']['main']['App']['CreateFolder'](arg1);
 }
@@ -28,6 +32,10 @@ export function DeleteCollection(arg1, arg2) {
 
 export function DeleteEnvironment(arg1, arg2) {
   return window['go']['main']['App']['DeleteEnvironment'](arg1, arg2);
+}
+
+export function DeleteExample(arg1, arg2) {
+  return window['go']['main']['App']['DeleteExample'](arg1, arg2);
 }
 
 export function DeleteFolder(arg1, arg2) {
@@ -50,6 +58,10 @@ export function DuplicateEnvironment(arg1) {
   return window['go']['main']['App']['DuplicateEnvironment'](arg1);
 }
 
+export function DuplicateExample(arg1) {
+  return window['go']['main']['App']['DuplicateExample'](arg1);
+}
+
 export function DuplicateFolder(arg1) {
   return window['go']['main']['App']['DuplicateFolder'](arg1);
 }
@@ -60,6 +72,10 @@ export function DuplicateRequest(arg1) {
 
 export function GetCollection(arg1) {
   return window['go']['main']['App']['GetCollection'](arg1);
+}
+
+export function GetExample(arg1) {
+  return window['go']['main']['App']['GetExample'](arg1);
 }
 
 export function GetRequest(arg1) {
@@ -92,6 +108,10 @@ export function RenameCollection(arg1, arg2) {
 
 export function RenameEnvironment(arg1, arg2) {
   return window['go']['main']['App']['RenameEnvironment'](arg1, arg2);
+}
+
+export function RenameExample(arg1, arg2) {
+  return window['go']['main']['App']['RenameExample'](arg1, arg2);
 }
 
 export function RenameFolder(arg1, arg2) {
@@ -128,6 +148,10 @@ export function UpdateCollectionSortOrder(arg1, arg2, arg3) {
 
 export function UpdateEnvironment(arg1, arg2) {
   return window['go']['main']['App']['UpdateEnvironment'](arg1, arg2);
+}
+
+export function UpdateExample(arg1, arg2) {
+  return window['go']['main']['App']['UpdateExample'](arg1, arg2);
 }
 
 export function UpdateFolderSortOrder(arg1, arg2, arg3) {

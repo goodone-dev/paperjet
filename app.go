@@ -435,6 +435,99 @@ func (a *App) DuplicateRequest(id string) (*collection.RequestResponse, error) {
 	return request, nil
 }
 
+// ── Example ───────────────────────────────────────────────────────────────
+
+func (a *App) CreateExample(payload collection.CreateExampleRequest) (*collection.ExampleResponse, error) {
+	example, err := a.collectionUsecase.CreateExample(a.ctx, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Debugf(a.ctx, "Example '%s' created", example.Name).Write()
+
+	return example, nil
+}
+
+func (a *App) GetExample(id string) (*collection.ExampleResponse, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	example, err := a.collectionUsecase.GetExample(a.ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Debugf(a.ctx, "Example '%s' details loaded", example.Name).Write()
+
+	return example, nil
+}
+
+func (a *App) RenameExample(id string, payload collection.RenameExampleRequest) (*collection.ExampleResponse, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	example, err := a.collectionUsecase.RenameExample(a.ctx, uid, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Debugf(a.ctx, "Example '%s' renamed", example.Name).Write()
+
+	return example, nil
+}
+
+func (a *App) UpdateExample(id string, payload collection.UpdateExampleRequest) (*collection.ExampleResponse, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	example, err := a.collectionUsecase.UpdateExample(a.ctx, uid, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Debugf(a.ctx, "Example '%s' updated", example.Name).Write()
+
+	return example, nil
+}
+
+func (a *App) DeleteExample(id string, name string) error {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return err
+	}
+
+	err = a.collectionUsecase.DeleteExample(a.ctx, uid)
+	if err != nil {
+		return err
+	}
+
+	logger.Debugf(a.ctx, "Example '%s' deleted", name).Write()
+
+	return nil
+}
+
+func (a *App) DuplicateExample(id string) (*collection.ExampleResponse, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	example, err := a.collectionUsecase.DuplicateExample(a.ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Debugf(a.ctx, "Example '%s' duplicated", example.Name).Write()
+
+	return example, nil
+}
+
 // ── Environment ───────────────────────────────────────────────────────────────
 
 func (a *App) ListEnvironments(workspaceID string) ([]environment.EnvironmentResponse, error) {

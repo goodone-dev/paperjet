@@ -16,13 +16,15 @@ type collectionUsecase struct {
 	collectionRepo collection.CollectionRepository
 	folderRepo     collection.CollectionFolderRepository
 	requestRepo    collection.CollectionRequestRepository
+	exampleRepo    collection.CollectionExampleRepository
 }
 
-func NewCollectionUsecase(collectionRepo collection.CollectionRepository, folderRepo collection.CollectionFolderRepository, requestRepo collection.CollectionRequestRepository) collection.CollectionUsecase {
+func NewCollectionUsecase(collectionRepo collection.CollectionRepository, folderRepo collection.CollectionFolderRepository, requestRepo collection.CollectionRequestRepository, exampleRepo collection.CollectionExampleRepository) collection.CollectionUsecase {
 	return &collectionUsecase{
 		collectionRepo: collectionRepo,
 		folderRepo:     folderRepo,
 		requestRepo:    requestRepo,
+		exampleRepo:    exampleRepo,
 	}
 }
 
@@ -46,6 +48,7 @@ func toCollectionResponse(c collection.Collection) collection.CollectionResponse
 func (u *collectionUsecase) buildTree(ctx context.Context, col *collection.Collection) ([]collection.FolderNode, []collection.RequestNode) {
 	folders, _ := u.folderRepo.FindAll(ctx, map[string]any{"collection_id": col.ID})
 	requests, _ := u.requestRepo.FindAll(ctx, map[string]any{"collection_id": col.ID})
+	examples, _ := u.exampleRepo.FindAll(ctx, map[string]any{"collection_id": col.ID})
 
 	colSortOrder := col.SortOrder
 	if colSortOrder == "" {
@@ -114,9 +117,21 @@ func (u *collectionUsecase) buildTree(ctx context.Context, col *collection.Colle
 			rr := toRequestResponse(r)
 
 			reqNode := collection.RequestNode{
-				ID:     rr.ID.String(),
-				Name:   rr.Name,
-				Method: rr.Method,
+				ID:       rr.ID.String(),
+				Name:     rr.Name,
+				Method:   rr.Method,
+				Examples: make([]collection.ExampleNode, 0),
+			}
+
+			for _, ex := range examples {
+				if ex.RequestID == r.ID {
+					reqNode.Examples = append(reqNode.Examples, collection.ExampleNode{
+						ID:     ex.ID.String(),
+						Name:   ex.Name,
+						Method: ex.Method,
+						Status: ex.Status,
+					})
+				}
 			}
 
 			requestNodes = append(requestNodes, reqNode)
@@ -318,6 +333,7 @@ func (u *collectionUsecase) Duplicate(ctx context.Context, ID uuid.UUID) (*colle
 
 	// Duplicate requests
 	requests, _ := u.requestRepo.FindAll(ctx, map[string]any{"collection_id": ID})
+	requestIDMap := make(map[uuid.UUID]uuid.UUID)
 	for _, req := range requests {
 		var newFolderID *uuid.UUID
 		if req.FolderID != nil {
@@ -341,7 +357,39 @@ func (u *collectionUsecase) Duplicate(ctx context.Context, ID uuid.UUID) (*colle
 			Idx:           req.Idx,
 		}
 
-		u.requestRepo.Insert(ctx, newReq, nil) //nolint:errcheck
+		inserted, err := u.requestRepo.Insert(ctx, newReq, nil)
+		if err == nil {
+			requestIDMap[req.ID] = inserted.ID
+		}
+	}
+
+	// Duplicate examples
+	examples, _ := u.exampleRepo.FindAll(ctx, map[string]any{"collection_id": ID})
+	for _, ex := range examples {
+		newReqID, ok := requestIDMap[ex.RequestID]
+		if !ok {
+			continue
+		}
+
+		u.exampleRepo.Insert(ctx, collection.CollectionExample{ //nolint:errcheck
+			CollectionID:    col.ID,
+			RequestID:       newReqID,
+			Name:            ex.Name,
+			Slug:            ex.Slug,
+			Method:          ex.Method,
+			URL:             ex.URL,
+			QueryParams:     ex.QueryParams,
+			PathVariables:   ex.PathVariables,
+			Auth:            ex.Auth,
+			Headers:         ex.Headers,
+			Body:            ex.Body,
+			ResponseBody:    ex.ResponseBody,
+			ResponseHeaders: ex.ResponseHeaders,
+			ResponseCookies: ex.ResponseCookies,
+			Status:          ex.Status,
+			StatusText:      ex.StatusText,
+			Idx:             ex.Idx,
+		}, nil)
 	}
 
 	res := toCollectionResponse(col)
@@ -610,6 +658,7 @@ func (u *collectionUsecase) DuplicateFolder(ctx context.Context, ID uuid.UUID) (
 
 	// Duplicate requests that belong to any folder in the copied subtree.
 	requests, _ := u.requestRepo.FindAll(ctx, map[string]any{"collection_id": folder.CollectionID})
+	requestIDMap := make(map[uuid.UUID]uuid.UUID)
 	for _, req := range requests {
 		if req.FolderID == nil {
 			continue
@@ -620,7 +669,7 @@ func (u *collectionUsecase) DuplicateFolder(ctx context.Context, ID uuid.UUID) (
 			continue
 		}
 
-		u.requestRepo.Insert(ctx, collection.CollectionRequest{ //nolint:errcheck
+		insertedReq, err := u.requestRepo.Insert(ctx, collection.CollectionRequest{
 			CollectionID:  req.CollectionID,
 			FolderID:      &newFolderID,
 			Name:          req.Name,
@@ -633,6 +682,38 @@ func (u *collectionUsecase) DuplicateFolder(ctx context.Context, ID uuid.UUID) (
 			Headers:       req.Headers,
 			Body:          req.Body,
 			Idx:           req.Idx,
+		}, nil)
+		if err == nil {
+			requestIDMap[req.ID] = insertedReq.ID
+		}
+	}
+
+	// Duplicate examples that belong to any copied request
+	examples, _ := u.exampleRepo.FindAll(ctx, map[string]any{"collection_id": folder.CollectionID})
+	for _, ex := range examples {
+		newReqID, ok := requestIDMap[ex.RequestID]
+		if !ok {
+			continue
+		}
+
+		u.exampleRepo.Insert(ctx, collection.CollectionExample{ //nolint:errcheck
+			CollectionID:    ex.CollectionID,
+			RequestID:       newReqID,
+			Name:            ex.Name,
+			Slug:            ex.Slug,
+			Method:          ex.Method,
+			URL:             ex.URL,
+			QueryParams:     ex.QueryParams,
+			PathVariables:   ex.PathVariables,
+			Auth:            ex.Auth,
+			Headers:         ex.Headers,
+			Body:            ex.Body,
+			ResponseBody:    ex.ResponseBody,
+			ResponseHeaders: ex.ResponseHeaders,
+			ResponseCookies: ex.ResponseCookies,
+			Status:          ex.Status,
+			StatusText:      ex.StatusText,
+			Idx:             ex.Idx,
 		}, nil)
 	}
 
@@ -864,6 +945,261 @@ func (u *collectionUsecase) DuplicateRequest(ctx context.Context, ID uuid.UUID) 
 		return nil, err
 	}
 
+	// Duplicate examples for this request
+	examples, _ := u.exampleRepo.FindAll(ctx, map[string]any{"request_id": ID})
+	for _, ex := range examples {
+		u.exampleRepo.Insert(ctx, collection.CollectionExample{ //nolint:errcheck
+			CollectionID:    inserted.CollectionID,
+			RequestID:       inserted.ID,
+			Name:            ex.Name,
+			Slug:            ex.Slug,
+			Method:          ex.Method,
+			URL:             ex.URL,
+			QueryParams:     ex.QueryParams,
+			PathVariables:   ex.PathVariables,
+			Auth:            ex.Auth,
+			Headers:         ex.Headers,
+			Body:            ex.Body,
+			ResponseBody:    ex.ResponseBody,
+			ResponseHeaders: ex.ResponseHeaders,
+			ResponseCookies: ex.ResponseCookies,
+			Status:          ex.Status,
+			StatusText:      ex.StatusText,
+			Idx:             ex.Idx,
+		}, nil)
+	}
+
 	res := toRequestResponse(inserted)
+	return &res, nil
+}
+
+func toExampleResponse(e collection.CollectionExample) collection.ExampleResponse {
+	res := collection.ExampleResponse{
+		ID:           e.ID,
+		CollectionID: e.CollectionID,
+		RequestID:    e.RequestID,
+		Name:         e.Name,
+		Slug:         e.Slug,
+		Method:       e.Method,
+		URL:          e.URL,
+		ResponseBody: e.ResponseBody,
+		Status:       e.Status,
+		StatusText:   e.StatusText,
+		Idx:          e.Idx,
+	}
+
+	json.Unmarshal(e.QueryParams, &res.QueryParams)
+	json.Unmarshal(e.PathVariables, &res.PathVariables)
+	json.Unmarshal(e.Auth, &res.Auth)
+	json.Unmarshal(e.Headers, &res.Headers)
+	json.Unmarshal(e.Body, &res.Body)
+	json.Unmarshal(e.ResponseHeaders, &res.ResponseHeaders)
+	json.Unmarshal(e.ResponseCookies, &res.ResponseCookies)
+
+	if res.QueryParams == nil {
+		res.QueryParams = make([]collection.KeyValue, 0)
+	}
+	if res.PathVariables == nil {
+		res.PathVariables = make([]collection.KeyValue, 0)
+	}
+	if res.Headers == nil {
+		res.Headers = make([]collection.KeyValue, 0)
+	}
+	if res.ResponseHeaders == nil {
+		res.ResponseHeaders = make([]collection.KeyValue, 0)
+	}
+	if res.ResponseCookies == nil {
+		res.ResponseCookies = make([]collection.KeyValue, 0)
+	}
+	if res.Auth.Type == "" {
+		res.Auth.Type = "none"
+	}
+	if res.Body.Type == "" {
+		res.Body.Type = "none"
+	}
+
+	return res
+}
+
+func (u *collectionUsecase) getExampleEntity(ctx context.Context, ID uuid.UUID) (*collection.CollectionExample, error) {
+	ex, err := u.exampleRepo.FindById(ctx, ID)
+	if err != nil {
+		logger.Error(ctx, err, "❌ Failed to get example").Write()
+		return nil, err
+	} else if ex == nil {
+		return nil, errors.NewNotFoundError("example not found")
+	}
+
+	return ex, nil
+}
+
+func (u *collectionUsecase) CreateExample(ctx context.Context, payload collection.CreateExampleRequest) (*collection.ExampleResponse, error) {
+	slug := strings.ToLower(strings.ReplaceAll(payload.Name, " ", "-"))
+
+	conds := map[string]any{"request_id": payload.RequestID}
+	maxIdx, err := u.exampleRepo.FindMaxIdx(ctx, conds)
+	if err != nil {
+		logger.Error(ctx, err, "❌ Failed to find max idx").Write()
+		return nil, err
+	}
+
+	bQryParams, _ := json.Marshal(payload.QueryParams)
+	bPathVars, _ := json.Marshal(payload.PathVariables)
+	bAuth, _ := json.Marshal(payload.Auth)
+	bHeaders, _ := json.Marshal(payload.Headers)
+	bBody, _ := json.Marshal(payload.Body)
+	bRespHeaders, _ := json.Marshal(payload.ResponseHeaders)
+	bRespCookies, _ := json.Marshal(payload.ResponseCookies)
+
+	entity := collection.CollectionExample{
+		CollectionID:    payload.CollectionID,
+		RequestID:       payload.RequestID,
+		Name:            payload.Name,
+		Slug:            slug,
+		Method:          payload.Method,
+		URL:             payload.URL,
+		QueryParams:     bQryParams,
+		PathVariables:   bPathVars,
+		Auth:            bAuth,
+		Headers:         bHeaders,
+		Body:            bBody,
+		ResponseBody:    payload.ResponseBody,
+		ResponseHeaders: bRespHeaders,
+		ResponseCookies: bRespCookies,
+		Status:          payload.Status,
+		StatusText:      payload.StatusText,
+		Idx:             maxIdx + 1,
+	}
+
+	inserted, err := u.exampleRepo.Insert(ctx, entity, nil)
+	if err != nil {
+		logger.Error(ctx, err, "❌ Failed to create example").Write()
+		return nil, err
+	}
+
+	res := toExampleResponse(inserted)
+	return &res, nil
+}
+
+func (u *collectionUsecase) GetExample(ctx context.Context, ID uuid.UUID) (*collection.ExampleResponse, error) {
+	ex, err := u.getExampleEntity(ctx, ID)
+	if err != nil {
+		return nil, err
+	}
+
+	res := toExampleResponse(*ex)
+	return &res, nil
+}
+
+func (u *collectionUsecase) RenameExample(ctx context.Context, ID uuid.UUID, payload collection.RenameExampleRequest) (*collection.ExampleResponse, error) {
+	_, err := u.getExampleEntity(ctx, ID)
+	if err != nil {
+		return nil, err
+	}
+
+	slug := strings.ToLower(strings.ReplaceAll(payload.Name, " ", "-"))
+	update := map[string]any{
+		"name": payload.Name,
+		"slug": slug,
+	}
+
+	ex, err := u.exampleRepo.UpdateById(ctx, ID, update, nil)
+	if err != nil {
+		logger.Error(ctx, err, "❌ Failed to rename example").Write()
+		return nil, err
+	}
+
+	res := toExampleResponse(ex)
+	return &res, nil
+}
+
+func (u *collectionUsecase) UpdateExample(ctx context.Context, ID uuid.UUID, payload collection.UpdateExampleRequest) (*collection.ExampleResponse, error) {
+	_, err := u.getExampleEntity(ctx, ID)
+	if err != nil {
+		return nil, err
+	}
+
+	bQryParams, _ := json.Marshal(payload.QueryParams)
+	bPathVars, _ := json.Marshal(payload.PathVariables)
+	bAuth, _ := json.Marshal(payload.Auth)
+	bHeaders, _ := json.Marshal(payload.Headers)
+	bBody, _ := json.Marshal(payload.Body)
+	bRespHeaders, _ := json.Marshal(payload.ResponseHeaders)
+	bRespCookies, _ := json.Marshal(payload.ResponseCookies)
+
+	update := map[string]any{
+		"name":             payload.Name,
+		"slug":             strings.ToLower(strings.ReplaceAll(payload.Name, " ", "-")),
+		"method":           payload.Method,
+		"url":              payload.URL,
+		"query_params":     bQryParams,
+		"path_variables":   bPathVars,
+		"auth":             bAuth,
+		"headers":          bHeaders,
+		"body":             bBody,
+		"response_body":    payload.ResponseBody,
+		"response_headers": bRespHeaders,
+		"response_cookies": bRespCookies,
+		"status":           payload.Status,
+		"status_text":      payload.StatusText,
+	}
+
+	ex, err := u.exampleRepo.UpdateById(ctx, ID, update, nil)
+	if err != nil {
+		logger.Error(ctx, err, "❌ Failed to update example").Write()
+		return nil, err
+	}
+
+	res := toExampleResponse(ex)
+	return &res, nil
+}
+
+func (u *collectionUsecase) DeleteExample(ctx context.Context, ID uuid.UUID) error {
+	_, err := u.getExampleEntity(ctx, ID)
+	if err != nil {
+		return err
+	}
+
+	if err := u.exampleRepo.DeleteById(ctx, ID, nil); err != nil {
+		logger.Error(ctx, err, "❌ Failed to delete example").Write()
+		return err
+	}
+
+	return nil
+}
+
+func (u *collectionUsecase) DuplicateExample(ctx context.Context, ID uuid.UUID) (*collection.ExampleResponse, error) {
+	ex, err := u.getExampleEntity(ctx, ID)
+	if err != nil {
+		return nil, err
+	}
+
+	newEx := collection.CollectionExample{
+		CollectionID:    ex.CollectionID,
+		RequestID:       ex.RequestID,
+		Name:            ex.Name + " (copy)",
+		Slug:            ex.Slug + "-copy",
+		Method:          ex.Method,
+		URL:             ex.URL,
+		QueryParams:     ex.QueryParams,
+		PathVariables:   ex.PathVariables,
+		Auth:            ex.Auth,
+		Headers:         ex.Headers,
+		Body:            ex.Body,
+		ResponseBody:    ex.ResponseBody,
+		ResponseHeaders: ex.ResponseHeaders,
+		ResponseCookies: ex.ResponseCookies,
+		Status:          ex.Status,
+		StatusText:      ex.StatusText,
+		Idx:             ex.Idx + 1,
+	}
+
+	inserted, err := u.exampleRepo.Insert(ctx, newEx, nil)
+	if err != nil {
+		logger.Error(ctx, err, "❌ Failed to duplicate example").Write()
+		return nil, err
+	}
+
+	res := toExampleResponse(inserted)
 	return &res, nil
 }

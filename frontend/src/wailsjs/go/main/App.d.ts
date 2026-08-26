@@ -9,6 +9,8 @@ export function CreateCollection(arg1:collection.CreateCollectionRequest):Promis
 
 export function CreateEnvironment(arg1:environment.CreateEnvironmentRequest):Promise<environment.EnvironmentResponse>;
 
+export function CreateExample(arg1:collection.CreateExampleRequest):Promise<collection.ExampleResponse>;
+
 export function CreateFolder(arg1:collection.CreateFolderRequest):Promise<collection.FolderResponse>;
 
 export function CreateRequest(arg1:collection.CreateRequestRequest):Promise<collection.RequestResponse>;
@@ -18,6 +20,8 @@ export function CreateWorkspace(arg1:workspace.CreateWorkspaceRequest):Promise<w
 export function DeleteCollection(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteEnvironment(arg1:string,arg2:string):Promise<void>;
+
+export function DeleteExample(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteFolder(arg1:string,arg2:string):Promise<void>;
 
@@ -29,11 +33,15 @@ export function DuplicateCollection(arg1:string):Promise<collection.CollectionRe
 
 export function DuplicateEnvironment(arg1:string):Promise<environment.EnvironmentResponse>;
 
+export function DuplicateExample(arg1:string):Promise<collection.ExampleResponse>;
+
 export function DuplicateFolder(arg1:string):Promise<collection.FolderResponse>;
 
 export function DuplicateRequest(arg1:string):Promise<collection.RequestResponse>;
 
 export function GetCollection(arg1:string):Promise<collection.CollectionResponse>;
+
+export function GetExample(arg1:string):Promise<collection.ExampleResponse>;
 
 export function GetRequest(arg1:string):Promise<collection.RequestResponse>;
 
@@ -50,6 +58,8 @@ export function MoveCollection(arg1:string,arg2:collection.MoveCollectionRequest
 export function RenameCollection(arg1:string,arg2:string):Promise<collection.CollectionResponse>;
 
 export function RenameEnvironment(arg1:string,arg2:environment.UpdateEnvironmentRequest):Promise<environment.EnvironmentResponse>;
+
+export function RenameExample(arg1:string,arg2:collection.RenameExampleRequest):Promise<collection.ExampleResponse>;
 
 export function RenameFolder(arg1:string,arg2:collection.RenameFolderRequest):Promise<collection.FolderResponse>;
 
@@ -68,6 +78,8 @@ export function UpdateCollectionFavorite(arg1:string,arg2:boolean):Promise<colle
 export function UpdateCollectionSortOrder(arg1:string,arg2:string,arg3:string):Promise<collection.CollectionResponse>;
 
 export function UpdateEnvironment(arg1:string,arg2:environment.UpdateEnvironmentRequest):Promise<environment.EnvironmentResponse>;
+
+export function UpdateExample(arg1:string,arg2:collection.UpdateExampleRequest):Promise<collection.ExampleResponse>;
 
 export function UpdateFolderSortOrder(arg1:string,arg2:string,arg3:string):Promise<collection.FolderResponse>;
 

@@ -52,7 +52,9 @@ func main() {
 	folderRepo := collectionRepoImpl.NewCollectionFolderRepository(folderBaseRepo)
 	requestBaseRepo := sqlite.NewBaseRepository[gorm.DB, uuid.UUID, collection.CollectionRequest](dbConn)
 	requestRepo := collectionRepoImpl.NewCollectionRequestRepository(requestBaseRepo)
-	collectionUsecase := collectionUsecaseImpl.NewCollectionUsecase(collectionRepo, folderRepo, requestRepo)
+	exampleBaseRepo := sqlite.NewBaseRepository[gorm.DB, uuid.UUID, collection.CollectionExample](dbConn)
+	exampleRepo := collectionRepoImpl.NewCollectionExampleRepository(exampleBaseRepo)
+	collectionUsecase := collectionUsecaseImpl.NewCollectionUsecase(collectionRepo, folderRepo, requestRepo, exampleRepo)
 	proxyUsecase := proxyUsecaseImpl.NewProxyUsecase()
 
 	// Environment Dependency Injection

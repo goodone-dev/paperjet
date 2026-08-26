@@ -35,10 +35,18 @@ type FolderNode struct {
 }
 
 type RequestNode struct {
-	ID        string     `json:"id"`
-	Name      string     `json:"name"`
-	Method    string     `json:"method"`
-	SortOrder *SortOrder `json:"sort_order,omitempty"`
+	ID        string        `json:"id"`
+	Name      string        `json:"name"`
+	Method    string        `json:"method"`
+	SortOrder *SortOrder    `json:"sort_order,omitempty"`
+	Examples  []ExampleNode `json:"examples"`
+}
+
+type ExampleNode struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Method string `json:"method"`
+	Status *int   `json:"status"`
 }
 
 type CollectionTree struct {

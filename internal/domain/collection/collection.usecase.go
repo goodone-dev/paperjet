@@ -32,4 +32,12 @@ type CollectionUsecase interface {
 	UpdateRequest(ctx context.Context, ID uuid.UUID, payload UpdateRequestRequest) (*RequestResponse, error)
 	DeleteRequest(ctx context.Context, ID uuid.UUID) error
 	DuplicateRequest(ctx context.Context, ID uuid.UUID) (*RequestResponse, error)
+
+	// Example Operations
+	CreateExample(ctx context.Context, payload CreateExampleRequest) (*ExampleResponse, error)
+	GetExample(ctx context.Context, ID uuid.UUID) (*ExampleResponse, error)
+	RenameExample(ctx context.Context, ID uuid.UUID, payload RenameExampleRequest) (*ExampleResponse, error)
+	UpdateExample(ctx context.Context, ID uuid.UUID, payload UpdateExampleRequest) (*ExampleResponse, error)
+	DeleteExample(ctx context.Context, ID uuid.UUID) error
+	DuplicateExample(ctx context.Context, ID uuid.UUID) (*ExampleResponse, error)
 }

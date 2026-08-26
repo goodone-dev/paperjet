@@ -152,11 +152,30 @@ export namespace collection {
 		}
 	}
 	
+	export class ExampleNode {
+	    id: string;
+	    name: string;
+	    method: string;
+	    status?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExampleNode(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.method = source["method"];
+	        this.status = source["status"];
+	    }
+	}
 	export class RequestNode {
 	    id: string;
 	    name: string;
 	    method: string;
 	    sort_order?: string;
+	    examples: ExampleNode[];
 	
 	    static createFrom(source: any = {}) {
 	        return new RequestNode(source);
@@ -168,7 +187,26 @@ export namespace collection {
 	        this.name = source["name"];
 	        this.method = source["method"];
 	        this.sort_order = source["sort_order"];
+	        this.examples = this.convertValues(source["examples"], ExampleNode);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class FolderNode {
 	    id: string;
@@ -304,6 +342,64 @@ export namespace collection {
 	        this.name = source["name"];
 	    }
 	}
+	export class CreateExampleRequest {
+	    collection_id: number[];
+	    request_id: number[];
+	    name: string;
+	    method: string;
+	    url: string;
+	    query_params: KeyValue[];
+	    path_variables: KeyValue[];
+	    auth: Auth;
+	    headers: KeyValue[];
+	    body: Body;
+	    response_body: string;
+	    response_headers: KeyValue[];
+	    response_cookies: KeyValue[];
+	    status?: number;
+	    status_text?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateExampleRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.collection_id = source["collection_id"];
+	        this.request_id = source["request_id"];
+	        this.name = source["name"];
+	        this.method = source["method"];
+	        this.url = source["url"];
+	        this.query_params = this.convertValues(source["query_params"], KeyValue);
+	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
+	        this.auth = this.convertValues(source["auth"], Auth);
+	        this.headers = this.convertValues(source["headers"], KeyValue);
+	        this.body = this.convertValues(source["body"], Body);
+	        this.response_body = source["response_body"];
+	        this.response_headers = this.convertValues(source["response_headers"], KeyValue);
+	        this.response_cookies = this.convertValues(source["response_cookies"], KeyValue);
+	        this.status = source["status"];
+	        this.status_text = source["status_text"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class CreateFolderRequest {
 	    collection_id: number[];
 	    parent_id?: number[];
@@ -369,6 +465,71 @@ export namespace collection {
 		}
 	}
 	
+	export class ExampleResponse {
+	    id: number[];
+	    collection_id: number[];
+	    request_id: number[];
+	    name: string;
+	    slug: string;
+	    method: string;
+	    url: string;
+	    query_params: KeyValue[];
+	    path_variables: KeyValue[];
+	    auth: Auth;
+	    headers: KeyValue[];
+	    body: Body;
+	    response_body: string;
+	    response_headers: KeyValue[];
+	    response_cookies: KeyValue[];
+	    status?: number;
+	    status_text?: string;
+	    idx: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExampleResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.collection_id = source["collection_id"];
+	        this.request_id = source["request_id"];
+	        this.name = source["name"];
+	        this.slug = source["slug"];
+	        this.method = source["method"];
+	        this.url = source["url"];
+	        this.query_params = this.convertValues(source["query_params"], KeyValue);
+	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
+	        this.auth = this.convertValues(source["auth"], Auth);
+	        this.headers = this.convertValues(source["headers"], KeyValue);
+	        this.body = this.convertValues(source["body"], Body);
+	        this.response_body = source["response_body"];
+	        this.response_headers = this.convertValues(source["response_headers"], KeyValue);
+	        this.response_cookies = this.convertValues(source["response_cookies"], KeyValue);
+	        this.status = source["status"];
+	        this.status_text = source["status_text"];
+	        this.idx = source["idx"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class FolderResponse {
 	    id: number[];
 	    collection_id: number[];
@@ -404,6 +565,18 @@ export namespace collection {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.target_workspace_id = source["target_workspace_id"];
+	    }
+	}
+	export class RenameExampleRequest {
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RenameExampleRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
 	    }
 	}
 	export class RenameFolderRequest {
@@ -495,6 +668,60 @@ export namespace collection {
 	        this.auth = this.convertValues(source["auth"], Auth);
 	        this.headers = this.convertValues(source["headers"], KeyValue);
 	        this.body = this.convertValues(source["body"], Body);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class UpdateExampleRequest {
+	    name: string;
+	    method: string;
+	    url: string;
+	    query_params: KeyValue[];
+	    path_variables: KeyValue[];
+	    auth: Auth;
+	    headers: KeyValue[];
+	    body: Body;
+	    response_body: string;
+	    response_headers: KeyValue[];
+	    response_cookies: KeyValue[];
+	    status?: number;
+	    status_text?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateExampleRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.method = source["method"];
+	        this.url = source["url"];
+	        this.query_params = this.convertValues(source["query_params"], KeyValue);
+	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
+	        this.auth = this.convertValues(source["auth"], Auth);
+	        this.headers = this.convertValues(source["headers"], KeyValue);
+	        this.body = this.convertValues(source["body"], Body);
+	        this.response_body = source["response_body"];
+	        this.response_headers = this.convertValues(source["response_headers"], KeyValue);
+	        this.response_cookies = this.convertValues(source["response_cookies"], KeyValue);
+	        this.status = source["status"];
+	        this.status_text = source["status_text"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
