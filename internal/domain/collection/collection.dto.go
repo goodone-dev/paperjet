@@ -46,7 +46,7 @@ type ExampleNode struct {
 	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Method string `json:"method"`
-	Status *int   `json:"status"`
+	Status int    `json:"status"`
 }
 
 type CollectionTree struct {

@@ -79,7 +79,7 @@ export namespace collection {
 	
 	
 	
-	export class KeyValue {
+	export class KeyValueFull {
 	    key: string;
 	    type: string;
 	    value: string;
@@ -87,7 +87,7 @@ export namespace collection {
 	    enabled: boolean;
 	
 	    static createFrom(source: any = {}) {
-	        return new KeyValue(source);
+	        return new KeyValueFull(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -116,8 +116,8 @@ export namespace collection {
 	export class Body {
 	    type: string;
 	    raw?: BodyRaw;
-	    form_data?: KeyValue[];
-	    url_encoded?: KeyValue[];
+	    form_data?: KeyValueFull[];
+	    url_encoded?: KeyValueFull[];
 	    binary?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -128,8 +128,8 @@ export namespace collection {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.type = source["type"];
 	        this.raw = this.convertValues(source["raw"], BodyRaw);
-	        this.form_data = this.convertValues(source["form_data"], KeyValue);
-	        this.url_encoded = this.convertValues(source["url_encoded"], KeyValue);
+	        this.form_data = this.convertValues(source["form_data"], KeyValueFull);
+	        this.url_encoded = this.convertValues(source["url_encoded"], KeyValueFull);
 	        this.binary = source["binary"];
 	    }
 	
@@ -156,7 +156,7 @@ export namespace collection {
 	    id: string;
 	    name: string;
 	    method: string;
-	    status?: number;
+	    status: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ExampleNode(source);
@@ -342,22 +342,36 @@ export namespace collection {
 	        this.name = source["name"];
 	    }
 	}
+	export class KeyValue {
+	    key: string;
+	    value: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new KeyValue(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.value = source["value"];
+	    }
+	}
 	export class CreateExampleRequest {
 	    collection_id: number[];
 	    request_id: number[];
 	    name: string;
 	    method: string;
 	    url: string;
-	    query_params: KeyValue[];
-	    path_variables: KeyValue[];
+	    query_params: KeyValueFull[];
+	    path_variables: KeyValueFull[];
 	    auth: Auth;
-	    headers: KeyValue[];
+	    headers: KeyValueFull[];
 	    body: Body;
 	    response_body: string;
 	    response_headers: KeyValue[];
 	    response_cookies: KeyValue[];
-	    status?: number;
-	    status_text?: string;
+	    status: number;
+	    status_text: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateExampleRequest(source);
@@ -370,10 +384,10 @@ export namespace collection {
 	        this.name = source["name"];
 	        this.method = source["method"];
 	        this.url = source["url"];
-	        this.query_params = this.convertValues(source["query_params"], KeyValue);
-	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
+	        this.query_params = this.convertValues(source["query_params"], KeyValueFull);
+	        this.path_variables = this.convertValues(source["path_variables"], KeyValueFull);
 	        this.auth = this.convertValues(source["auth"], Auth);
-	        this.headers = this.convertValues(source["headers"], KeyValue);
+	        this.headers = this.convertValues(source["headers"], KeyValueFull);
 	        this.body = this.convertValues(source["body"], Body);
 	        this.response_body = source["response_body"];
 	        this.response_headers = this.convertValues(source["response_headers"], KeyValue);
@@ -422,10 +436,10 @@ export namespace collection {
 	    name: string;
 	    method: string;
 	    url: string;
-	    query_params: KeyValue[];
-	    path_variables: KeyValue[];
+	    query_params: KeyValueFull[];
+	    path_variables: KeyValueFull[];
 	    auth: Auth;
-	    headers: KeyValue[];
+	    headers: KeyValueFull[];
 	    body: Body;
 	
 	    static createFrom(source: any = {}) {
@@ -439,10 +453,10 @@ export namespace collection {
 	        this.name = source["name"];
 	        this.method = source["method"];
 	        this.url = source["url"];
-	        this.query_params = this.convertValues(source["query_params"], KeyValue);
-	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
+	        this.query_params = this.convertValues(source["query_params"], KeyValueFull);
+	        this.path_variables = this.convertValues(source["path_variables"], KeyValueFull);
 	        this.auth = this.convertValues(source["auth"], Auth);
-	        this.headers = this.convertValues(source["headers"], KeyValue);
+	        this.headers = this.convertValues(source["headers"], KeyValueFull);
 	        this.body = this.convertValues(source["body"], Body);
 	    }
 	
@@ -473,16 +487,16 @@ export namespace collection {
 	    slug: string;
 	    method: string;
 	    url: string;
-	    query_params: KeyValue[];
-	    path_variables: KeyValue[];
+	    query_params: KeyValueFull[];
+	    path_variables: KeyValueFull[];
 	    auth: Auth;
-	    headers: KeyValue[];
+	    headers: KeyValueFull[];
 	    body: Body;
 	    response_body: string;
 	    response_headers: KeyValue[];
 	    response_cookies: KeyValue[];
-	    status?: number;
-	    status_text?: string;
+	    status: number;
+	    status_text: string;
 	    idx: number;
 	
 	    static createFrom(source: any = {}) {
@@ -498,10 +512,10 @@ export namespace collection {
 	        this.slug = source["slug"];
 	        this.method = source["method"];
 	        this.url = source["url"];
-	        this.query_params = this.convertValues(source["query_params"], KeyValue);
-	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
+	        this.query_params = this.convertValues(source["query_params"], KeyValueFull);
+	        this.path_variables = this.convertValues(source["path_variables"], KeyValueFull);
 	        this.auth = this.convertValues(source["auth"], Auth);
-	        this.headers = this.convertValues(source["headers"], KeyValue);
+	        this.headers = this.convertValues(source["headers"], KeyValueFull);
 	        this.body = this.convertValues(source["body"], Body);
 	        this.response_body = source["response_body"];
 	        this.response_headers = this.convertValues(source["response_headers"], KeyValue);
@@ -554,6 +568,7 @@ export namespace collection {
 	        this.idx = source["idx"];
 	    }
 	}
+	
 	
 	export class MoveCollectionRequest {
 	    target_workspace_id: number[];
@@ -644,10 +659,10 @@ export namespace collection {
 	    slug: string;
 	    method: string;
 	    url: string;
-	    query_params: KeyValue[];
-	    path_variables: KeyValue[];
+	    query_params: KeyValueFull[];
+	    path_variables: KeyValueFull[];
 	    auth: Auth;
-	    headers: KeyValue[];
+	    headers: KeyValueFull[];
 	    body: Body;
 	
 	    static createFrom(source: any = {}) {
@@ -663,10 +678,10 @@ export namespace collection {
 	        this.slug = source["slug"];
 	        this.method = source["method"];
 	        this.url = source["url"];
-	        this.query_params = this.convertValues(source["query_params"], KeyValue);
-	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
+	        this.query_params = this.convertValues(source["query_params"], KeyValueFull);
+	        this.path_variables = this.convertValues(source["path_variables"], KeyValueFull);
 	        this.auth = this.convertValues(source["auth"], Auth);
-	        this.headers = this.convertValues(source["headers"], KeyValue);
+	        this.headers = this.convertValues(source["headers"], KeyValueFull);
 	        this.body = this.convertValues(source["body"], Body);
 	    }
 	
@@ -692,16 +707,16 @@ export namespace collection {
 	    name: string;
 	    method: string;
 	    url: string;
-	    query_params: KeyValue[];
-	    path_variables: KeyValue[];
+	    query_params: KeyValueFull[];
+	    path_variables: KeyValueFull[];
 	    auth: Auth;
-	    headers: KeyValue[];
+	    headers: KeyValueFull[];
 	    body: Body;
 	    response_body: string;
 	    response_headers: KeyValue[];
 	    response_cookies: KeyValue[];
-	    status?: number;
-	    status_text?: string;
+	    status: number;
+	    status_text: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateExampleRequest(source);
@@ -712,10 +727,10 @@ export namespace collection {
 	        this.name = source["name"];
 	        this.method = source["method"];
 	        this.url = source["url"];
-	        this.query_params = this.convertValues(source["query_params"], KeyValue);
-	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
+	        this.query_params = this.convertValues(source["query_params"], KeyValueFull);
+	        this.path_variables = this.convertValues(source["path_variables"], KeyValueFull);
 	        this.auth = this.convertValues(source["auth"], Auth);
-	        this.headers = this.convertValues(source["headers"], KeyValue);
+	        this.headers = this.convertValues(source["headers"], KeyValueFull);
 	        this.body = this.convertValues(source["body"], Body);
 	        this.response_body = source["response_body"];
 	        this.response_headers = this.convertValues(source["response_headers"], KeyValue);
@@ -746,10 +761,10 @@ export namespace collection {
 	    name: string;
 	    method: string;
 	    url: string;
-	    query_params: KeyValue[];
-	    path_variables: KeyValue[];
+	    query_params: KeyValueFull[];
+	    path_variables: KeyValueFull[];
 	    auth: Auth;
-	    headers: KeyValue[];
+	    headers: KeyValueFull[];
 	    body: Body;
 	
 	    static createFrom(source: any = {}) {
@@ -761,10 +776,10 @@ export namespace collection {
 	        this.name = source["name"];
 	        this.method = source["method"];
 	        this.url = source["url"];
-	        this.query_params = this.convertValues(source["query_params"], KeyValue);
-	        this.path_variables = this.convertValues(source["path_variables"], KeyValue);
+	        this.query_params = this.convertValues(source["query_params"], KeyValueFull);
+	        this.path_variables = this.convertValues(source["path_variables"], KeyValueFull);
 	        this.auth = this.convertValues(source["auth"], Auth);
-	        this.headers = this.convertValues(source["headers"], KeyValue);
+	        this.headers = this.convertValues(source["headers"], KeyValueFull);
 	        this.body = this.convertValues(source["body"], Body);
 	    }
 	
@@ -925,10 +940,10 @@ export namespace proxy {
 	    name: string;
 	    method: string;
 	    url: string;
-	    query_params: collection.KeyValue[];
-	    path_variables: collection.KeyValue[];
+	    query_params: collection.KeyValueFull[];
+	    path_variables: collection.KeyValueFull[];
 	    auth: collection.Auth;
-	    headers: collection.KeyValue[];
+	    headers: collection.KeyValueFull[];
 	    body: collection.Body;
 	    env_variables: environment.EnvironmentVariable[];
 	
@@ -941,10 +956,10 @@ export namespace proxy {
 	        this.name = source["name"];
 	        this.method = source["method"];
 	        this.url = source["url"];
-	        this.query_params = this.convertValues(source["query_params"], collection.KeyValue);
-	        this.path_variables = this.convertValues(source["path_variables"], collection.KeyValue);
+	        this.query_params = this.convertValues(source["query_params"], collection.KeyValueFull);
+	        this.path_variables = this.convertValues(source["path_variables"], collection.KeyValueFull);
 	        this.auth = this.convertValues(source["auth"], collection.Auth);
-	        this.headers = this.convertValues(source["headers"], collection.KeyValue);
+	        this.headers = this.convertValues(source["headers"], collection.KeyValueFull);
 	        this.body = this.convertValues(source["body"], collection.Body);
 	        this.env_variables = this.convertValues(source["env_variables"], environment.EnvironmentVariable);
 	    }

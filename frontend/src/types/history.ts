@@ -1,4 +1,4 @@
-import type { BackendKeyValue, AuthConfig, BodyConfig } from './collection';
+import type { BackendKeyValueFull, AuthConfig, BodyConfig } from './collection';
 
 // A history entry captures the full request payload so it can be replayed
 // exactly, plus a snapshot of the returned response for quick inspection.
@@ -12,9 +12,9 @@ export interface HistoryEntry {
     url: string;
     name?: string;
     // Full request payload — enables one-click replay.
-    queryParams?: BackendKeyValue[];
-    pathVariables?: BackendKeyValue[];
-    headers?: BackendKeyValue[];
+    queryParams?: BackendKeyValueFull[];
+    pathVariables?: BackendKeyValueFull[];
+    headers?: BackendKeyValueFull[];
     auth?: AuthConfig;
     body?: BodyConfig;
     // Optional captured response

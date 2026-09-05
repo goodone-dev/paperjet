@@ -3,16 +3,16 @@ package collection
 import "github.com/google/uuid"
 
 type CreateRequestRequest struct {
-	CollectionID  uuid.UUID  `json:"collection_id" validate:"required"`
-	FolderID      *uuid.UUID `json:"folder_id,omitempty"`
-	Name          string     `json:"name" validate:"required"`
-	Method        string     `json:"method" validate:"required"`
-	URL           string     `json:"url" validate:"required"`
-	QueryParams   []KeyValue `json:"query_params"`
-	PathVariables []KeyValue `json:"path_variables"`
-	Auth          Auth       `json:"auth"`
-	Headers       []KeyValue `json:"headers"`
-	Body          Body       `json:"body"`
+	CollectionID  uuid.UUID      `json:"collection_id" validate:"required"`
+	FolderID      *uuid.UUID     `json:"folder_id,omitempty"`
+	Name          string         `json:"name" validate:"required"`
+	Method        string         `json:"method" validate:"required"`
+	URL           string         `json:"url" validate:"required"`
+	QueryParams   []KeyValueFull `json:"query_params"`
+	PathVariables []KeyValueFull `json:"path_variables"`
+	Auth          Auth           `json:"auth"`
+	Headers       []KeyValueFull `json:"headers"`
+	Body          Body           `json:"body"`
 }
 
 type RenameRequestRequest struct {
@@ -20,32 +20,32 @@ type RenameRequestRequest struct {
 }
 
 type UpdateRequestRequest struct {
-	Name          string     `json:"name" validate:"required"`
-	Method        string     `json:"method" validate:"required"`
-	URL           string     `json:"url" validate:"required"`
-	QueryParams   []KeyValue `json:"query_params"`
-	PathVariables []KeyValue `json:"path_variables"`
-	Auth          Auth       `json:"auth"`
-	Headers       []KeyValue `json:"headers"`
-	Body          Body       `json:"body"`
+	Name          string         `json:"name" validate:"required"`
+	Method        string         `json:"method" validate:"required"`
+	URL           string         `json:"url" validate:"required"`
+	QueryParams   []KeyValueFull `json:"query_params"`
+	PathVariables []KeyValueFull `json:"path_variables"`
+	Auth          Auth           `json:"auth"`
+	Headers       []KeyValueFull `json:"headers"`
+	Body          Body           `json:"body"`
 }
 
 type RequestResponse struct {
-	ID            uuid.UUID  `json:"id"`
-	CollectionID  uuid.UUID  `json:"collection_id"`
-	FolderID      *uuid.UUID `json:"folder_id,omitempty"`
-	Name          string     `json:"name"`
-	Slug          string     `json:"slug"`
-	Method        string     `json:"method"`
-	URL           string     `json:"url"`
-	QueryParams   []KeyValue `json:"query_params"`
-	PathVariables []KeyValue `json:"path_variables"`
-	Auth          Auth       `json:"auth"`
-	Headers       []KeyValue `json:"headers"`
-	Body          Body       `json:"body"`
+	ID            uuid.UUID      `json:"id"`
+	CollectionID  uuid.UUID      `json:"collection_id"`
+	FolderID      *uuid.UUID     `json:"folder_id,omitempty"`
+	Name          string         `json:"name"`
+	Slug          string         `json:"slug"`
+	Method        string         `json:"method"`
+	URL           string         `json:"url"`
+	QueryParams   []KeyValueFull `json:"query_params"`
+	PathVariables []KeyValueFull `json:"path_variables"`
+	Auth          Auth           `json:"auth"`
+	Headers       []KeyValueFull `json:"headers"`
+	Body          Body           `json:"body"`
 }
 
-type KeyValue struct {
+type KeyValueFull struct {
 	Key         string `json:"key" validate:"required"`
 	Type        string `json:"type" validate:"required"`
 	Value       string `json:"value"`
@@ -53,12 +53,17 @@ type KeyValue struct {
 	Enabled     bool   `json:"enabled"`
 }
 
+type KeyValue struct {
+	Key   string `json:"key" validate:"required"`
+	Value string `json:"value"`
+}
+
 type Body struct {
-	Type       string      `json:"type" validate:"required"`
-	Raw        *BodyRaw    `json:"raw,omitempty"`
-	FormData   *[]KeyValue `json:"form_data,omitempty"`
-	UrlEncoded *[]KeyValue `json:"url_encoded,omitempty"`
-	Binary     *string     `json:"binary,omitempty"`
+	Type       string          `json:"type" validate:"required"`
+	Raw        *BodyRaw        `json:"raw,omitempty"`
+	FormData   *[]KeyValueFull `json:"form_data,omitempty"`
+	UrlEncoded *[]KeyValueFull `json:"url_encoded,omitempty"`
+	Binary     *string         `json:"binary,omitempty"`
 }
 
 type BodyRaw struct {

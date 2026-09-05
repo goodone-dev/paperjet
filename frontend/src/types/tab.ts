@@ -47,6 +47,30 @@ export interface RequestTab {
     baseline?: RequestTabSnapshot | null;
 }
 
+export interface ExampleTab {
+    id: string;
+    type: 'example';
+    sourceId: string | null;
+    requestId: string | null;
+    colId: string | null;
+    folderId: string | null;
+    name: string;
+    method: HttpMethod | string;
+    url: string;
+    queryParams: KeyValueRow[];
+    pathVariables: KeyValueRow[];
+    headers: KeyValueRow[];
+    bodyType: 'none' | 'raw' | 'form-data' | 'x-www-form-urlencoded' | 'binary' | 'graphql';
+    bodyRaw: BodyRaw | null;
+    bodyFormData: KeyValueRow[];
+    bodyUrlEncoded: KeyValueRow[];
+    bodyBinary: string | null;
+    auth: AuthConfig;
+    response: ResponseData;
+    isDirty: boolean;
+    activeTab: string;
+}
+
 export interface EnvironmentTab {
     id: string;
     type: 'environment';
@@ -54,4 +78,4 @@ export interface EnvironmentTab {
     name: string;
 }
 
-export type Tab = RequestTab | EnvironmentTab;
+export type Tab = RequestTab | EnvironmentTab | ExampleTab;

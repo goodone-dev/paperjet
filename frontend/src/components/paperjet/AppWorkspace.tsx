@@ -3,6 +3,7 @@ import { TopBar } from '@/components/paperjet/TopBar';
 import { Sidebar } from '@/components/paperjet/Sidebar';
 import { RequestTabsBar } from '@/components/paperjet/RequestTabsBar';
 import { RequestPanel } from '@/components/paperjet/RequestPanel';
+import { ExamplePanel } from '@/components/paperjet/ExamplePanel';
 import { ResponsePanel } from '@/components/paperjet/ResponsePanel';
 import { EnvironmentEditor } from '@/components/paperjet/EnvironmentEditor';
 import {
@@ -20,11 +21,11 @@ import { useEnvironmentTabSync } from '@/hooks/useEnvironmentTabSync';
 import { useCollectionTabSync } from '@/hooks/useCollectionTabSync';
 import { PanelGroup, Panel, PanelResizeHandle, type ImperativePanelHandle } from 'react-resizable-panels';
 import { cn } from '@/lib/utils';
-import { GetRequest } from '@/lib/api';
-import { mapBackendRequestToTab, mapHistoryEntryToTab } from '@/lib/request-mapper';
+import { UpdateExample, GetRequest, GetExample } from '@/lib/api';
+import { mapBackendRequestToTab, mapHistoryEntryToTab, mapBackendExampleToTab, mapExampleTabToSavePayload, mapTabToSavePayload } from '@/lib/request-mapper';
 import { EventsOn, EventsOff } from '@/wailsjs/runtime/runtime';
-import type { Collection } from '@/types/collection';
-import type { RequestTab, Tab } from '@/types/tab';
+import type { Collection, ExampleSummary } from '@/types/collection';
+import type { RequestTab, ExampleTab } from '@/types/tab';
 import type { RequestSummary } from '@/types/collection';
 import type { HistoryEntry } from '@/types/history';
 
@@ -78,6 +79,7 @@ export default function AppWorkspace() {
         discardChanges,
         togglePin,
         openRequest,
+        openExample,
         openEnvironmentTab,
         newTab,
         duplicateTab,
@@ -118,6 +120,35 @@ export default function AppWorkspace() {
         [tabs, setActiveTabId, openRequest],
     );
 
+    const handleOpenExample = useCallback(
+        async (ex: Partial<ExampleTab> & Partial<ExampleSummary>) => {
+            if (ex.id && !ex.id.startsWith('ex-')) {
+                // Dedup: if a tab for this source example is already open, just activate it.
+                const existingTab = tabs.find(
+                    (t) => t.type === 'example' && (t as ExampleTab).sourceId === ex.id,
+                );
+                if (existingTab) {
+                    setActiveTabId(existingTab.id);
+                    return;
+                }
+                try {
+                    const full = await GetExample(ex.id);
+                    const mapped = mapBackendExampleToTab(full, {
+                        colId: ex.colId ?? null,
+                        folderId: ex.folderId ?? null,
+                        requestId: ex.requestId ?? null,
+                    });
+                    openExample(mapped);
+                    return;
+                } catch (err) {
+                    console.error('Failed to fetch example:', err);
+                }
+            }
+            openExample(ex);
+        },
+        [tabs, setActiveTabId, openExample],
+    );
+
     // Replay a history entry in a fresh tab (no sourceId so it opens standalone).
     const handleReplayHistory = useCallback(
         (entry: HistoryEntry) => {
@@ -134,20 +165,82 @@ export default function AppWorkspace() {
         (cfg) => setSaveRequest(cfg),
     );
 
+    const handleSaveExample = useCallback(async () => {
+        if (!activeTab || activeTab.type !== 'example' || !activeTab.sourceId) return;
+        try {
+            const payload = mapExampleTabToSavePayload(activeTab as ExampleTab);
+            await UpdateExample(activeTab.sourceId, payload);
+            markClean(activeTab.id);
+        } catch (err) {
+            console.error('Failed to save example', err);
+        }
+    }, [activeTab, markClean]);
+
+    const tryRequest = useCallback(async () => {
+        if (!activeTab || activeTab.type !== 'example') return;
+
+        const ex = activeTab as ExampleTab;
+        openRequest({
+            name: `${ex.name}`,
+            method: ex.method,
+            url: ex.url,
+            queryParams: JSON.parse(JSON.stringify(ex.queryParams || [])),
+            pathVariables: JSON.parse(JSON.stringify(ex.pathVariables || [])),
+            headers: JSON.parse(JSON.stringify(ex.headers || [])),
+            bodyType: ex.bodyType,
+            bodyRaw: ex.bodyRaw ? { ...ex.bodyRaw } : null,
+            bodyFormData: JSON.parse(JSON.stringify(ex.bodyFormData || [])),
+            bodyUrlEncoded: JSON.parse(JSON.stringify(ex.bodyUrlEncoded || [])),
+            bodyBinary: ex.bodyBinary,
+            auth: JSON.parse(JSON.stringify(ex.auth || { type: 'none' })),
+        });
+    }, [activeTab, openRequest]);
+
+    const handleAddExample = useCallback(async () => {
+        if (!activeTab || activeTab.type !== 'request') return;
+
+        const req = activeTab as RequestTab;
+        if (!req.sourceId) {
+            alert('Please save the request before adding examples to it.');
+            return;
+        }
+
+        const resp = req.response;
+        if (!resp) return;
+
+        const name = resp.statusText || `${resp.status}`;
+        const payload = mapTabToSavePayload(req);
+        return await data.addExample(req.colId!, req.folderId ?? null, req.sourceId, {
+            ...payload,
+            collection_id: req.colId!,
+            request_id: req.sourceId,
+            name,
+            response_body: resp.body,
+            response_headers: resp.headers.map((h) => ({ key: h.key, value: h.value })),
+            response_cookies: resp.cookies.map((c) => ({ key: c.key, value: c.value })),
+            status: resp.status,
+            status_text: resp.statusText,
+        });
+    }, [activeTab, data]);
+
     // Send a request — logic lives in useRequestSend.
     const handleSend = useRequestSend(activeTab, data.environments, setTabs, data.setHistory);
 
-    // Cmd/Ctrl+S saves the active request
+    // Cmd/Ctrl+S saves the active request or example
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 's') {
                 e.preventDefault();
-                handleSaveRequest();
+                if (activeTab?.type === 'example') {
+                    handleSaveExample();
+                } else {
+                    handleSaveRequest();
+                }
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [handleSaveRequest]);
+    }, [handleSaveRequest, handleSaveExample, activeTab?.type]);
 
     // Cmd/Ctrl+T new request tab
     useEffect(() => {
@@ -173,6 +266,8 @@ export default function AppWorkspace() {
 
     const activeRequestSourceId =
         activeTab?.type === 'request' ? (activeTab as RequestTab).sourceId ?? null : null;
+    const activeExampleSourceId =
+        activeTab?.type === 'example' ? (activeTab as ExampleTab).sourceId ?? null : null;
 
     const tabActions = {
         onNew: newTab,
@@ -242,6 +337,12 @@ export default function AppWorkspace() {
         renameRequest: data.renameRequest,
         deleteRequest: data.deleteRequest,
         duplicateRequest: data.duplicateRequest,
+        toggleRequestExpanded: data.toggleRequestExpanded,
+        expandRequest: data.expandRequest,
+        addExample: data.addExample,
+        renameExample: data.renameExample,
+        deleteExample: data.deleteExample,
+        duplicateExample: data.duplicateExample,
         moveRequest: data.moveRequest,
         moveFolder: data.moveFolder,
         createEnvironment: data.createEnvironment,
@@ -272,6 +373,7 @@ export default function AppWorkspace() {
                     <Sidebar
                         actions={sidebarActions}
                         onOpenRequest={handleOpenRequest}
+                        onOpenExample={handleOpenExample}
                         onReplayHistory={handleReplayHistory}
                         onOpenEnvironment={openEnvironmentTab}
                         onMove={openMove}
@@ -279,6 +381,7 @@ export default function AppWorkspace() {
                         setActiveView={setActiveView}
                         openConfirm={openConfirm}
                         activeRequestSourceId={activeRequestSourceId}
+                        activeExampleSourceId={activeExampleSourceId}
                     />
                 </Panel>
 
@@ -299,6 +402,39 @@ export default function AppWorkspace() {
                                     This environment was deleted.
                                 </div>
                             ))}
+
+                        {activeTab?.type === 'example' && (
+                            <PanelGroup direction="vertical" className="flex-1 min-h-0">
+                                <Panel
+                                    ref={requestPanelRef}
+                                    minSize={14}
+                                    collapsible={true}
+                                >
+                                    <ExamplePanel
+                                        example={activeTab as ExampleTab}
+                                        onUpdate={updateTab}
+                                        onTry={tryRequest}
+                                        onSave={handleSaveExample}
+                                        envVariables={activeEnvVars}
+                                    />
+                                </Panel>
+                                <ResizeHandle horizontal className={cn(isResponseMaximized && 'hidden')} />
+                                <Panel defaultSize={30} minSize={6}>
+                                    <ResponsePanel
+                                        response={(activeTab as ExampleTab).response}
+                                        onUpdate={(responsePatch) =>
+                                            updateTab({
+                                                id: activeTab.id,
+                                                response: { ...(activeTab as ExampleTab).response, ...responsePatch },
+                                            })
+                                        }
+                                        isSending={false}
+                                        isMaximized={isResponseMaximized}
+                                        onToggleMaximize={() => setIsResponseMaximized((prev) => !prev)}
+                                    />
+                                </Panel>
+                            </PanelGroup>
+                        )}
 
                         {activeTab?.type === 'request' && (
                             <PanelGroup direction="vertical" className="flex-1 min-h-0">
@@ -323,6 +459,7 @@ export default function AppWorkspace() {
                                         isSending={(activeTab as RequestTab).isSending}
                                         isMaximized={isResponseMaximized}
                                         onToggleMaximize={() => setIsResponseMaximized((prev) => !prev)}
+                                        onSaveAsExample={handleAddExample}
                                     />
                                 </Panel>
                             </PanelGroup>

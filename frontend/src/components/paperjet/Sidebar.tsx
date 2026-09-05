@@ -31,6 +31,7 @@ import {
     Check,
     ArrowDownAZ,
     ListOrdered,
+    BookmarkPlus,
 } from 'lucide-react';
 import {
     DndContext,
@@ -71,12 +72,13 @@ import { InlineEdit } from './InlineEdit';
 import { cn } from '@/lib/utils';
 import { useSingleClick } from '@/hooks/useSingleClick';
 import { groupHistoryByDate, historyTimeLabel, prune7Days } from '@/lib/history-format';
-import type { Collection, Folder, RequestSummary } from '@/types/collection';
+import type { Collection, Folder, RequestSummary, ExampleSummary } from '@/types/collection';
 import type { Environment } from '@/types/environment';
 import type { DragSource, DropDest } from '@/types/dnd';
-import type { RequestTab } from '@/types/tab';
+import type { RequestTab, ExampleTab } from '@/types/tab';
 import type { HistoryEntry } from '@/types/history';
 import type { ConfirmDialogConfig } from './CrudDialogs';
+import { CreateExamplePayload } from '@/lib/api';
 
 // Typed subset of useWorkspaceData that the Sidebar consumes.
 export interface SidebarActions {
@@ -102,6 +104,12 @@ export interface SidebarActions {
     renameRequest: (colId: string, folderId: string | null, reqId: string, name: string) => void | Promise<void>;
     deleteRequest: (colId: string, folderId: string | null, reqId: string) => void | Promise<void>;
     duplicateRequest: (colId: string, folderId: string | null, reqId: string) => void | Promise<void>;
+    toggleRequestExpanded: (colId: string, folderId: string | null, reqId: string) => void;
+    expandRequest: (colId: string, folderId: string | null, reqId: string) => void;
+    addExample: (colId: string, folderId: string | null, reqId: string, payload: CreateExamplePayload | { name: string } | string) => Promise<{ id: string } | null> | void;
+    renameExample: (colId: string, folderId: string | null, reqId: string, exampleId: string, name: string) => void | Promise<void>;
+    deleteExample: (colId: string, folderId: string | null, reqId: string, exampleId: string, name: string) => void | Promise<void>;
+    duplicateExample: (colId: string, folderId: string | null, reqId: string, exampleId: string) => void | Promise<void>;
     moveRequest: (src: DragSource, dest: DropDest) => void;
     moveFolder: (src: DragSource, dest: DropDest) => void;
     createEnvironment: (name: string) => void | Promise<void>;
@@ -236,16 +244,17 @@ const ContextWrap: React.FC<{ items: MenuEntry[]; children: React.ReactNode }> =
 
 interface EditState {
     mode: 'create' | 'rename';
-    kind: 'collection' | 'folder' | 'subfolder' | 'request' | 'environment';
+    kind: 'collection' | 'folder' | 'subfolder' | 'request' | 'example' | 'environment';
     id?: string;
     colId?: string;
     folderId?: string;
+    reqId?: string;
 }
 
 interface EditApi {
     edit: EditState | null;
-    startCreate: (kind: EditState['kind'], colId?: string, folderId?: string) => void;
-    startRename: (kind: EditState['kind'], id: string, colId?: string, folderId?: string) => void;
+    startCreate: (kind: EditState['kind'], colId?: string, folderId?: string, reqId?: string) => void;
+    startRename: (kind: EditState['kind'], id: string, colId?: string, folderId?: string, reqId?: string) => void;
     clearEdit: () => void;
     submitCreate: (name: string) => void;
     submitRename: (name: string) => void;
@@ -262,6 +271,8 @@ interface SidebarProps {
     openConfirm: (config: ConfirmDialogConfig) => void;
     // Source id of the currently-active request tab (used to highlight the sidebar row).
     activeRequestSourceId: string | null;
+    onOpenExample: (ex: Partial<ExampleTab> & Partial<ExampleSummary>) => void;
+    activeExampleSourceId: string | null;
 }
 
 // DragData and DropData types + ID builders live in @/lib/dnd-helpers.
@@ -315,6 +326,7 @@ const RequestDragGhost: React.FC<{ reqId: string; collections: Collection[] }> =
 export const Sidebar: React.FC<SidebarProps> = ({
     actions,
     onOpenRequest,
+    onOpenExample,
     onReplayHistory,
     onOpenEnvironment,
     onMove,
@@ -322,32 +334,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setActiveView,
     openConfirm,
     activeRequestSourceId,
+    activeExampleSourceId,
 }) => {
     const [search, setSearch] = useState('');
     const [edit, setEdit] = useState<EditState | null>(null);
 
-    const startCreate: EditApi['startCreate'] = (kind, colId, folderId) =>
-        setEdit({ mode: 'create', kind, colId, folderId });
-    const startRename: EditApi['startRename'] = (kind, id, colId, folderId) =>
-        setEdit({ mode: 'rename', kind, id, colId, folderId });
+    const startCreate: EditApi['startCreate'] = (kind, colId, folderId, reqId) =>
+        setEdit({ mode: 'create', kind, colId, folderId, reqId });
+    const startRename: EditApi['startRename'] = (kind, id, colId, folderId, reqId) =>
+        setEdit({ mode: 'rename', kind, id, colId, folderId, reqId });
     const clearEdit = () => setEdit(null);
 
     const submitCreate = (name: string) => {
         if (!edit) return;
-        const { kind, colId, folderId } = edit;
+        const { kind, colId, folderId, reqId } = edit;
         if (kind === 'collection') actions.addCollection(name);
         else if (kind === 'environment') actions.createEnvironment(name);
         else if (kind === 'folder' && colId) actions.addFolder(colId, name);
         else if (kind === 'subfolder' && colId) actions.addFolder(colId, name, folderId);
         else if (kind === 'request' && colId) actions.addRequest(colId, folderId ?? null, { name });
+        else if (kind === 'example' && colId && reqId) actions.addExample(colId, folderId ?? null, reqId, { name });
         clearEdit();
     };
     const submitRename = (name: string) => {
         if (!edit || !edit.id) return;
-        const { kind, id, colId, folderId } = edit;
+        const { kind, id, colId, folderId, reqId } = edit;
         if (kind === 'collection') actions.renameCollection(id, name);
         else if (kind === 'folder' && colId) actions.renameFolder(colId, id, name);
         else if (kind === 'request' && colId) actions.renameRequest(colId, folderId ?? null, id, name);
+        else if (kind === 'example' && colId && reqId) actions.renameExample(colId, folderId ?? null, reqId, id, name);
         else if (kind === 'environment') actions.renameEnvironment(id, name);
         clearEdit();
     };
@@ -451,12 +466,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     actions={actions}
                                     search={search}
                                     onOpenRequest={onOpenRequest}
+                                    onOpenExample={onOpenExample}
                                     onMove={onMove}
                                     editApi={editApi}
                                     openConfirm={openConfirm}
                                     activeRequestSourceId={activeRequestSourceId}
                                     activeDragId={activeDragId}
                                     overDropId={overDropId}
+                                    activeExampleSourceId={activeExampleSourceId}
                                 />
                                 {/* Floating ghost that follows the cursor */}
                                 <DragOverlay dropAnimation={null}>
@@ -497,24 +514,28 @@ interface CollectionsViewProps {
     actions: SidebarActions;
     search: string;
     onOpenRequest: SidebarProps['onOpenRequest'];
+    onOpenExample: SidebarProps['onOpenExample'];
     onMove: SidebarProps['onMove'];
     editApi: EditApi;
     openConfirm: SidebarProps['openConfirm'];
     activeRequestSourceId: string | null;
     activeDragId: string | null;
     overDropId: string | null;
+    activeExampleSourceId: string | null;
 }
 
 const CollectionsView: React.FC<CollectionsViewProps> = ({
     actions,
     search,
     onOpenRequest,
+    onOpenExample,
     onMove,
     editApi,
     openConfirm,
     activeRequestSourceId,
     activeDragId,
     overDropId,
+    activeExampleSourceId,
 }) => {
     const q = search.toLowerCase();
     const filterFolders = (folders: Folder[]): Folder[] =>
@@ -564,12 +585,14 @@ const CollectionsView: React.FC<CollectionsViewProps> = ({
                     col={col}
                     actions={actions}
                     onOpenRequest={onOpenRequest}
+                    onOpenExample={onOpenExample}
                     onMove={onMove}
                     editApi={editApi}
                     openConfirm={openConfirm}
                     activeRequestSourceId={activeRequestSourceId}
                     activeDragId={activeDragId}
                     overDropId={overDropId}
+                    activeExampleSourceId={activeExampleSourceId}
                 />
             ))}
         </div>
@@ -588,24 +611,28 @@ interface CollectionRowProps {
     col: Collection;
     actions: SidebarActions;
     onOpenRequest: SidebarProps['onOpenRequest'];
+    onOpenExample: SidebarProps['onOpenExample'];
     onMove: SidebarProps['onMove'];
     editApi: EditApi;
     openConfirm: SidebarProps['openConfirm'];
     activeRequestSourceId: string | null;
     activeDragId: string | null;
     overDropId: string | null;
+    activeExampleSourceId: string | null;
 }
 
 const CollectionRow: React.FC<CollectionRowProps> = ({
     col,
     actions,
     onOpenRequest,
+    onOpenExample,
     onMove,
     editApi,
     openConfirm,
     activeRequestSourceId,
     activeDragId,
     overDropId,
+    activeExampleSourceId,
 }) => {
     const { edit } = editApi;
     const isRenaming = edit?.mode === 'rename' && edit.kind === 'collection' && edit.id === col.id;
@@ -739,11 +766,13 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
                                     parentFolderId={null}
                                     actions={actions}
                                     onOpenRequest={onOpenRequest}
+                                    onOpenExample={onOpenExample}
                                     editApi={editApi}
                                     openConfirm={openConfirm}
                                     activeRequestSourceId={activeRequestSourceId}
                                     activeDragId={activeDragId}
                                     overDropId={overDropId}
+                                    activeExampleSourceId={activeExampleSourceId}
                                 />
                             ))}
                             {(col.requests || []).map((req) => (
@@ -754,11 +783,13 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
                                     req={req}
                                     actions={actions}
                                     onOpenRequest={onOpenRequest}
+                                    onOpenExample={onOpenExample}
                                     editApi={editApi}
                                     openConfirm={openConfirm}
                                     isActive={req.id === activeRequestSourceId}
                                     activeDragId={activeDragId}
                                     overDropId={overDropId}
+                                    activeExampleSourceId={activeExampleSourceId}
                                 />
                             ))}
                             {creatingReqHere && (
@@ -799,14 +830,16 @@ const CollectionRow: React.FC<CollectionRowProps> = ({
 interface FolderRowProps {
     col: Collection;
     folder: Folder;
-    parentFolderId: string | null;
+    parentFolderId?: string | null;
     actions: SidebarActions;
     onOpenRequest: SidebarProps['onOpenRequest'];
+    onOpenExample: SidebarProps['onOpenExample'];
     editApi: EditApi;
     openConfirm: SidebarProps['openConfirm'];
     activeRequestSourceId: string | null;
     activeDragId: string | null;
     overDropId: string | null;
+    activeExampleSourceId: string | null;
 }
 
 const FolderRow: React.FC<FolderRowProps> = ({
@@ -815,11 +848,13 @@ const FolderRow: React.FC<FolderRowProps> = ({
     parentFolderId,
     actions,
     onOpenRequest,
+    onOpenExample,
     editApi,
     openConfirm,
     activeRequestSourceId,
     activeDragId,
     overDropId,
+    activeExampleSourceId,
 }) => {
     const { edit } = editApi;
     const isRenaming = edit?.mode === 'rename' && edit.kind === 'folder' && edit.id === folder.id;
@@ -921,7 +956,7 @@ const FolderRow: React.FC<FolderRowProps> = ({
         <div className="relative">
             {/* DropZoneSpacer acts as the "insert before" drop target for folders */}
             <DropZoneSpacer
-                dropData={{ kind: 'folder_before', colId: col.id, folderId: folder.id, parentFolderId }}
+                dropData={{ kind: 'folder_before', colId: col.id, folderId: folder.id, parentFolderId: parentFolderId ?? null }}
                 activeDragId={activeDragId}
                 overDropId={overDropId}
                 className="absolute -top-1 left-0 right-0 h-2 z-10 flex items-center justify-center"
@@ -944,7 +979,7 @@ const FolderRow: React.FC<FolderRowProps> = ({
                     }}
                     data-testid={`folder-toggle-${folder.id}`}
                 >
-                    <ChevronRight className={cn('h-3 w-3 text-muted-foreground transition-transform shrink-0', folder.expanded && 'rotate-90')} />
+                    <ChevronRight className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0', folder.expanded && 'rotate-90')} />
                     {folder.expanded ? (
                         <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" strokeWidth={2} />
                     ) : (
@@ -984,11 +1019,13 @@ const FolderRow: React.FC<FolderRowProps> = ({
                                 parentFolderId={folder.id}
                                 actions={actions}
                                 onOpenRequest={onOpenRequest}
+                                onOpenExample={onOpenExample}
                                 editApi={editApi}
                                 openConfirm={openConfirm}
                                 activeRequestSourceId={activeRequestSourceId}
                                 activeDragId={activeDragId}
                                 overDropId={overDropId}
+                                activeExampleSourceId={activeExampleSourceId}
                             />
                         ))}
                         {(folder.requests || []).map((req) => (
@@ -999,11 +1036,13 @@ const FolderRow: React.FC<FolderRowProps> = ({
                                 req={req}
                                 actions={actions}
                                 onOpenRequest={onOpenRequest}
+                                onOpenExample={onOpenExample}
                                 editApi={editApi}
                                 openConfirm={openConfirm}
                                 isActive={req.id === activeRequestSourceId}
                                 activeDragId={activeDragId}
                                 overDropId={overDropId}
+                                activeExampleSourceId={activeExampleSourceId}
                             />
                         ))}
                         {creatingSubFolder && (
@@ -1045,12 +1084,128 @@ interface RequestRowProps {
     req: RequestSummary;
     actions: SidebarActions;
     onOpenRequest: SidebarProps['onOpenRequest'];
+    onOpenExample: SidebarProps['onOpenExample'];
     editApi: EditApi;
     openConfirm: SidebarProps['openConfirm'];
     isActive: boolean;
     activeDragId: string | null;
     overDropId: string | null;
+    activeExampleSourceId: string | null;
 }
+
+interface ExampleRowProps {
+    col: Collection;
+    folder: Folder | null;
+    req: RequestSummary;
+    example: ExampleSummary;
+    actions: SidebarActions;
+    onOpenExample: SidebarProps['onOpenExample'];
+    editApi: EditApi;
+    openConfirm: SidebarProps['openConfirm'];
+    isActive: boolean;
+}
+
+const ExampleRow: React.FC<ExampleRowProps> = ({
+    col,
+    folder,
+    req,
+    example,
+    actions,
+    onOpenExample,
+    editApi,
+    openConfirm,
+    isActive,
+}) => {
+    const { edit } = editApi;
+    const isRenaming = edit?.mode === 'rename' && edit.kind === 'example' && edit.id === example.id;
+
+    const items: MenuEntry[] = [
+        {
+            label: 'Rename',
+            icon: Pencil,
+            testId: `example-rename-${example.id}`,
+            onClick: () => editApi.startRename('example', example.id, col.id, folder?.id, req.id),
+        },
+        {
+            label: 'Duplicate',
+            icon: Copy,
+            testId: `example-duplicate-${example.id}`,
+            onClick: () => actions.duplicateExample(col.id, folder?.id ?? null, req.id, example.id),
+        },
+        { separator: true },
+        {
+            label: 'Delete',
+            icon: Trash2,
+            danger: true,
+            testId: `example-delete-${example.id}`,
+            onClick: () =>
+                openConfirm({
+                    title: `Delete "${example.name}"?`,
+                    description: 'This example will be removed.',
+                    onConfirm: () => actions.deleteExample(col.id, folder?.id ?? null, req.id, example.id, example.name),
+                }),
+        },
+    ];
+
+    const getStatusBadge = (status: number | null) => {
+        if (!status) return null;
+        let color = 'text-muted-foreground border-border';
+        if (status >= 200 && status < 300) color = 'text-green-500 border-green-500/30 bg-green-500/10';
+        else if (status >= 300 && status < 400) color = 'text-blue-500 border-blue-500/30 bg-blue-500/10';
+        else if (status >= 400 && status < 500) color = 'text-yellow-500 border-yellow-500/30 bg-yellow-500/10';
+        else if (status >= 500) color = 'text-red-500 border-red-500/30 bg-red-500/10';
+
+        return (
+            <span className={cn('text-[10px] font-mono px-1.5 py-0.2 rounded border shrink-0', color)}>
+                {status}
+            </span>
+        );
+    };
+
+    return (
+        <ContextWrap items={items}>
+            <div
+                data-testid={`example-item-${example.id}`}
+                data-active={isActive ? 'true' : undefined}
+                onClick={() =>
+                    !isRenaming &&
+                    onOpenExample({
+                        ...example,
+                        colId: col.id,
+                        folderId: folder?.id ?? null,
+                        requestId: req.id,
+                    })
+                }
+                onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    editApi.startRename('example', example.id, col.id, folder?.id, req.id);
+                }}
+                className={cn(
+                    'group w-full flex items-center gap-2 pl-6 pr-2 py-1 rounded-md transition-colors text-left cursor-pointer',
+                    !isActive && 'hover:bg-sidebar-hover',
+                    isActive && 'bg-primary-soft text-primary font-medium',
+                )}
+            >
+                {getStatusBadge(example.status)}
+                {isRenaming ? (
+                    <InlineEdit
+                        defaultValue={example.name}
+                        className="text-[12px] text-foreground/90"
+                        onSubmit={editApi.submitRename}
+                        onCancel={editApi.clearEdit}
+                    />
+                ) : (
+                    <span className={cn('flex-1 text-[12px] truncate', isActive ? 'text-primary' : 'text-foreground/80')}>
+                        {example.name}
+                    </span>
+                )}
+
+                {!isRenaming && <RowActions items={items} testId={`example-menu-${example.id}`} indicator={null} />}
+            </div>
+        </ContextWrap>
+    );
+};
 
 const RequestRow: React.FC<RequestRowProps> = ({
     col,
@@ -1058,15 +1213,32 @@ const RequestRow: React.FC<RequestRowProps> = ({
     req,
     actions,
     onOpenRequest,
+    onOpenExample,
     editApi,
     openConfirm,
     isActive,
     activeDragId,
     overDropId,
+    activeExampleSourceId,
 }) => {
     const { edit } = editApi;
     const isRenaming = edit?.mode === 'rename' && edit.kind === 'request' && edit.id === req.id;
+    const isCreatingExample = edit?.mode === 'create' && edit.kind === 'example' && edit.reqId === req.id;
+    const examples = req.examples || [];
+    const hasExamples = examples.length > 0;
+    const isExpanded = req.expanded ?? false;
+
     const items: MenuEntry[] = [
+        {
+            label: 'Add Example',
+            icon: BookmarkPlus,
+            testId: `request-add-example-${req.id}`,
+            onClick: () => {
+                actions.expandRequest(col.id, folder?.id ?? null, req.id);
+                editApi.startCreate('example', col.id, folder?.id, req.id);
+            },
+        },
+        { separator: true },
         {
             label: 'Rename',
             icon: Pencil,
@@ -1113,6 +1285,19 @@ const RequestRow: React.FC<RequestRowProps> = ({
     // Insertion-line indicator: show above this request when it's the current drop target.
     const isInsertTarget = overDropId === myDropId && activeDragId !== myDragId;
 
+    const handleRowClick = () => {
+        if (isRenaming) return;
+        onOpenRequest({ ...req, colId: col.id, folderId: folder?.id ?? null });
+        if (hasExamples) {
+            actions.expandRequest(col.id, folder?.id ?? null, req.id);
+        }
+    };
+
+    const handleChevronClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        actions.toggleRequestExpanded(col.id, folder?.id ?? null, req.id);
+    };
+
     return (
         <>
             {/* Insertion line above — outside ContextWrap so trigger has exactly one child */}
@@ -1126,19 +1311,27 @@ const RequestRow: React.FC<RequestRowProps> = ({
                     {...listeners}
                     data-testid={`request-item-${req.id}`}
                     data-active={isActive ? 'true' : undefined}
-                    onClick={() => !isRenaming && onOpenRequest({ ...req, colId: col.id, folderId: folder?.id ?? null })}
+                    onClick={handleRowClick}
                     onDoubleClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
                         editApi.startRename('request', req.id, col.id, folder?.id);
                     }}
                     className={cn(
-                        'group w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-left cursor-pointer',
+                        'group w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md transition-colors text-left cursor-pointer',
                         !isActive && 'hover:bg-sidebar-hover',
                         isDragging && 'opacity-0 pointer-events-none',
                         isActive && 'bg-primary-soft text-primary font-medium',
                     )}
                 >
+                    {hasExamples ? (
+                        <ChevronRight
+                            className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0', isExpanded && 'rotate-90')}
+                            onClick={handleChevronClick}
+                        />
+                    ) : (
+                        <div className="w-3.5" />
+                    )}
                     <MethodLabel method={req.method} className="w-11 shrink-0 text-left" />
                     {isRenaming ? (
                         <InlineEdit
@@ -1154,6 +1347,37 @@ const RequestRow: React.FC<RequestRowProps> = ({
                     {!isRenaming && <RowActions items={items} testId={`request-menu-${req.id}`} indicator={null} />}
                 </div>
             </ContextWrap>
+
+            <AnimatePresence initial={false}>
+                {isExpanded && (
+                    <motion.div {...COLLAPSE_ANIM} className="overflow-hidden flex flex-col gap-0.5 ml-[15px] border-l border-sidebar-border pl-2">
+                        {examples.map((ex) => (
+                            <ExampleRow
+                                key={ex.id}
+                                col={col}
+                                folder={folder}
+                                req={req}
+                                example={ex}
+                                actions={actions}
+                                onOpenExample={onOpenExample}
+                                editApi={editApi}
+                                openConfirm={openConfirm}
+                                isActive={activeExampleSourceId === ex.id}
+                            />
+                        ))}
+                        {isCreatingExample && (
+                            <div className="flex items-center gap-2 pl-6 pr-2 py-1">
+                                <InlineEdit
+                                    placeholder="Example name…"
+                                    className="text-[12px] text-foreground/90"
+                                    onSubmit={editApi.submitCreate}
+                                    onCancel={editApi.clearEdit}
+                                />
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </>
     );
 };

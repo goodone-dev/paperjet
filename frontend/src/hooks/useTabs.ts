@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { loadState, saveState } from '@/lib/persist';
-import type { RequestTab, RequestTabSnapshot, Tab, EnvironmentTab } from '@/types/tab';
+import type { RequestTab, RequestTabSnapshot, Tab, EnvironmentTab, ExampleTab } from '@/types/tab';
 import type { KeyValueRow } from '@/types/collection';
 import type { Environment } from '@/types/environment';
 
@@ -31,6 +31,43 @@ const newRequestTemplate = (overrides: Partial<RequestTab> = {}): RequestTab => 
     activeTab: 'params',
     pinned: overrides.pinned ?? false,
     baseline: overrides.baseline ?? null,
+});
+
+const newExampleTemplate = (overrides: Partial<ExampleTab> = {}): ExampleTab => ({
+    id: `ex-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    type: 'example',
+    sourceId: overrides.sourceId ?? null,
+    requestId: overrides.requestId ?? null,
+    colId: overrides.colId ?? null,
+    folderId: overrides.folderId ?? null,
+    name: overrides.name || 'Untitled Example',
+    method: overrides.method || 'GET',
+    url: overrides.url || '',
+    queryParams: overrides.queryParams || [{ id: 'p1', key: '', type: 'text', value: '', description: '', enabled: true }],
+    pathVariables: overrides.pathVariables || ([] as KeyValueRow[]),
+    headers: overrides.headers || [
+        { id: 'h1', key: 'Accept', type: 'text', value: 'application/json', description: '', enabled: true },
+        { id: 'h2', key: '', type: 'text', value: '', description: '', enabled: true },
+    ],
+    bodyType: overrides.bodyType || 'none',
+    bodyRaw: overrides.bodyRaw || null,
+    bodyFormData: overrides.bodyFormData || [{ id: 'f1', key: '', type: 'text', value: '', description: '', enabled: true }],
+    bodyUrlEncoded: overrides.bodyUrlEncoded || [{ id: 'u1', key: '', type: 'text', value: '', description: '', enabled: true }],
+    bodyBinary: overrides.bodyBinary ?? null,
+    auth: overrides.auth || { type: 'none' },
+    response: {
+        body: overrides.response?.body || '',
+        headers: overrides.response?.headers || [],
+        cookies: overrides.response?.cookies || [],
+        status: overrides.response?.status ?? 200,
+        statusText: overrides.response?.statusText || '200 OK',
+        bytes: [],
+        time: 0,
+        size: 0,
+        error: false,
+    },
+    isDirty: false,
+    activeTab: 'params',
 });
 
 const DEFAULT_TAB = (): RequestTab => newRequestTemplate({});
@@ -123,7 +160,7 @@ export function useTabs(workspaceId: string | null) {
     const activeTab = tabs.find((t) => t.id === activeTabId);
 
     const updateTab = useCallback(
-        (patch: Partial<RequestTab> & { id: string }) => {
+        (patch: Partial<RequestTab | ExampleTab> & { id: string }) => {
             setTabs((ts) =>
                 ts.map((t) => (t.id === patch.id ? ({ ...t, ...patch, isDirty: true } as Tab) : t)),
             );
@@ -199,6 +236,22 @@ export function useTabs(workspaceId: string | null) {
             newReq.baseline = snapshot(newReq);
             setTabs((ts) => [...ts, newReq]);
             setActiveTabId(newReq.id);
+        },
+        [tabs, setActiveTabId, setTabs],
+    );
+
+    const openExample = useCallback(
+        (ex: Partial<ExampleTab>) => {
+            if (ex.sourceId) {
+                const existing = tabs.find((t) => t.type === 'example' && t.sourceId === ex.sourceId);
+                if (existing) {
+                    setActiveTabId(existing.id);
+                    return;
+                }
+            }
+            const newEx = newExampleTemplate(ex);
+            setTabs((ts) => [...ts, newEx]);
+            setActiveTabId(newEx.id);
         },
         [tabs, setActiveTabId, setTabs],
     );
@@ -302,6 +355,7 @@ export function useTabs(workspaceId: string | null) {
         discardChanges,
         togglePin,
         openRequest,
+        openExample,
         openEnvironmentTab,
         newTab,
         duplicateTab,

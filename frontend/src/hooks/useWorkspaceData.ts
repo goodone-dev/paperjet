@@ -38,6 +38,11 @@ import {
     DeleteRequest,
     DuplicateRequest,
     type CreateRequestPayload,
+    CreateExample,
+    RenameExample,
+    DeleteExample,
+    DuplicateExample,
+    type CreateExamplePayload,
 } from '@/lib/api';
 
 type Updater<T> = T | ((prev: T) => T);
@@ -732,6 +737,210 @@ export function useWorkspaceData() {
         );
     }, []);
 
+    const toggleRequestExpanded = useCallback((colId: string, folderId: string | null, reqId: string) => {
+        if (folderId) {
+            mapFolder(setCollections, colId, folderId, (f) => ({
+                ...f,
+                requests: (f.requests || []).map((r) => (r.id === reqId ? { ...r, expanded: !r.expanded } : r)),
+            }));
+        } else {
+            mapCol(setCollections, colId, (c) => ({
+                ...c,
+                requests: (c.requests || []).map((r) => (r.id === reqId ? { ...r, expanded: !r.expanded } : r)),
+            }));
+        }
+    }, []);
+
+    const expandRequest = useCallback((colId: string, folderId: string | null, reqId: string) => {
+        if (folderId) {
+            mapFolder(setCollections, colId, folderId, (f) => ({
+                ...f,
+                requests: (f.requests || []).map((r) => (r.id === reqId ? { ...r, expanded: true } : r)),
+            }));
+        } else {
+            mapCol(setCollections, colId, (c) => ({
+                ...c,
+                requests: (c.requests || []).map((r) => (r.id === reqId ? { ...r, expanded: true } : r)),
+            }));
+        }
+    }, []);
+
+    // ---- Example CRUD ----
+    const addExample = useCallback(
+        async (colId: string, folderId: string | null, reqId: string, req: CreateExamplePayload | { name: string } | string) => {
+            try {
+                let payload: any = req;
+                if (typeof req === 'string' || !('method' in (req as any))) {
+                    const name = typeof req === 'string' ? req : (req as any).name || '200 OK';
+                    payload = {
+                        collection_id: colId,
+                        request_id: reqId,
+                        name,
+                        method: 'GET',
+                        url: '',
+                        query_params: [],
+                        path_variables: [],
+                        auth: { type: 'none' },
+                        headers: [],
+                        body: { type: 'none' },
+                        response_body: '',
+                        response_headers: [],
+                        response_cookies: [],
+                        status: 200,
+                        status_text: '200 OK',
+                    };
+                }
+                const res: any = await CreateExample(payload);
+                const exampleSummary = {
+                    id: res.id,
+                    name: res.name,
+                    method: res.method,
+                    status: res.status,
+                };
+                if (folderId) {
+                    mapFolder(setCollections, colId, folderId, (f) => ({
+                        ...f,
+                        requests: (f.requests || []).map((r) =>
+                            r.id === reqId
+                                ? { ...r, expanded: true, examples: [...(r.examples || []), exampleSummary] }
+                                : r,
+                        ),
+                    }));
+                } else {
+                    mapCol(setCollections, colId, (c) => ({
+                        ...c,
+                        requests: (c.requests || []).map((r) =>
+                            r.id === reqId
+                                ? { ...r, expanded: true, examples: [...(r.examples || []), exampleSummary] }
+                                : r,
+                        ),
+                    }));
+                }
+                return res as { id: string };
+            } catch (err) {
+                console.error('Failed to add example', err);
+                return null;
+            }
+        },
+        [],
+    );
+
+    const renameExample = useCallback(
+        async (colId: string, folderId: string | null, reqId: string, exampleId: string, name: string) => {
+            try {
+                await RenameExample(exampleId, { name });
+                if (folderId) {
+                    mapFolder(setCollections, colId, folderId, (f) => ({
+                        ...f,
+                        requests: (f.requests || []).map((r) =>
+                            r.id === reqId
+                                ? {
+                                      ...r,
+                                      examples: (r.examples || []).map((ex) =>
+                                          ex.id === exampleId ? { ...ex, name } : ex,
+                                      ),
+                                  }
+                                : r,
+                        ),
+                    }));
+                } else {
+                    mapCol(setCollections, colId, (c) => ({
+                        ...c,
+                        requests: (c.requests || []).map((r) =>
+                            r.id === reqId
+                                ? {
+                                      ...r,
+                                      examples: (r.examples || []).map((ex) =>
+                                          ex.id === exampleId ? { ...ex, name } : ex,
+                                      ),
+                                  }
+                                : r,
+                        ),
+                    }));
+                }
+            } catch (err) {
+                console.error('Failed to rename example', err);
+            }
+        },
+        [],
+    );
+
+    const deleteExample = useCallback(
+        async (colId: string, folderId: string | null, reqId: string, exampleId: string, name: string) => {
+            try {
+                await DeleteExample(exampleId, name);
+                if (folderId) {
+                    mapFolder(setCollections, colId, folderId, (f) => ({
+                        ...f,
+                        requests: (f.requests || []).map((r) =>
+                            r.id === reqId
+                                ? {
+                                      ...r,
+                                      examples: (r.examples || []).filter((ex) => ex.id !== exampleId),
+                                  }
+                                : r,
+                        ),
+                    }));
+                } else {
+                    mapCol(setCollections, colId, (c) => ({
+                        ...c,
+                        requests: (c.requests || []).map((r) =>
+                            r.id === reqId
+                                ? {
+                                      ...r,
+                                      examples: (r.examples || []).filter((ex) => ex.id !== exampleId),
+                                  }
+                                : r,
+                        ),
+                    }));
+                }
+            } catch (err) {
+                console.error('Failed to delete example', err);
+            }
+        },
+        [],
+    );
+
+    const duplicateExample = useCallback(
+        async (colId: string, folderId: string | null, reqId: string, exampleId: string) => {
+            try {
+                const res: any = await DuplicateExample(exampleId);
+                const exampleSummary = {
+                    id: res.id,
+                    name: res.name,
+                    method: res.method,
+                    status: res.status,
+                };
+                if (folderId) {
+                    mapFolder(setCollections, colId, folderId, (f) => ({
+                        ...f,
+                        requests: (f.requests || []).map((r) => {
+                            if (r.id !== reqId) return r;
+                            const exs = [...(r.examples || [])];
+                            const idx = exs.findIndex((e) => e.id === exampleId);
+                            exs.splice(idx < 0 ? exs.length : idx + 1, 0, exampleSummary);
+                            return { ...r, examples: exs };
+                        }),
+                    }));
+                } else {
+                    mapCol(setCollections, colId, (c) => ({
+                        ...c,
+                        requests: (c.requests || []).map((r) => {
+                            if (r.id !== reqId) return r;
+                            const exs = [...(r.examples || [])];
+                            const idx = exs.findIndex((e) => e.id === exampleId);
+                            exs.splice(idx < 0 ? exs.length : idx + 1, 0, exampleSummary);
+                            return { ...r, examples: exs };
+                        }),
+                    }));
+                }
+            } catch (err) {
+                console.error('Failed to duplicate example', err);
+            }
+        },
+        [],
+    );
+
     // ---- Drag & drop ----
     const moveRequest = useCallback((src: DragSource, dest: DropDest) => {
         setCollections((cs) => {
@@ -981,6 +1190,13 @@ export function useWorkspaceData() {
         updateRequest,
         moveRequest,
         moveFolder,
+        toggleRequestExpanded,
+        expandRequest,
+        // Example
+        addExample,
+        renameExample,
+        deleteExample,
+        duplicateExample,
         // Environment
         createEnvironment,
         updateEnvironment,

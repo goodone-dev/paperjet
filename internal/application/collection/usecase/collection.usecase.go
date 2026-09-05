@@ -761,13 +761,13 @@ func toRequestResponse(r collection.CollectionRequest) collection.RequestRespons
 	json.Unmarshal(r.Body, &res.Body)
 
 	if res.QueryParams == nil {
-		res.QueryParams = make([]collection.KeyValue, 0)
+		res.QueryParams = make([]collection.KeyValueFull, 0)
 	}
 	if res.PathVariables == nil {
-		res.PathVariables = make([]collection.KeyValue, 0)
+		res.PathVariables = make([]collection.KeyValueFull, 0)
 	}
 	if res.Headers == nil {
-		res.Headers = make([]collection.KeyValue, 0)
+		res.Headers = make([]collection.KeyValueFull, 0)
 	}
 	if res.Auth.Type == "" {
 		res.Auth.Type = "none"
@@ -997,13 +997,13 @@ func toExampleResponse(e collection.CollectionExample) collection.ExampleRespons
 	json.Unmarshal(e.ResponseCookies, &res.ResponseCookies)
 
 	if res.QueryParams == nil {
-		res.QueryParams = make([]collection.KeyValue, 0)
+		res.QueryParams = make([]collection.KeyValueFull, 0)
 	}
 	if res.PathVariables == nil {
-		res.PathVariables = make([]collection.KeyValue, 0)
+		res.PathVariables = make([]collection.KeyValueFull, 0)
 	}
 	if res.Headers == nil {
-		res.Headers = make([]collection.KeyValue, 0)
+		res.Headers = make([]collection.KeyValueFull, 0)
 	}
 	if res.ResponseHeaders == nil {
 		res.ResponseHeaders = make([]collection.KeyValue, 0)

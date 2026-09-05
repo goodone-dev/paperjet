@@ -11,16 +11,24 @@
  */
 import * as raw from '@/wailsjs/go/main/App';
 import type { Workspace } from '@/types/workspace';
-import type { BackendKeyValue, AuthConfig, BodyConfig } from '@/types/collection';
+import type { BackendKeyValueFull, AuthConfig, BodyConfig, BackendKeyValue } from '@/types/collection';
 import type { EnvVariable } from '@/types/environment';
 
 // ─── Wire shapes (what the backend actually sends over the JSON bridge) ───
+
+export interface WireExampleNode {
+    id: string;
+    name: string;
+    method: string;
+    status: number;
+}
 
 export interface WireRequestNode {
     id: string;
     name: string;
     method: string;
     sort_order?: string;
+    examples?: WireExampleNode[];
 }
 
 export interface WireFolderNode {
@@ -49,11 +57,32 @@ export interface WireRequestResponse {
     slug: string;
     method: string;
     url: string;
-    query_params: BackendKeyValue[];
-    path_variables: BackendKeyValue[];
+    query_params: BackendKeyValueFull[];
+    path_variables: BackendKeyValueFull[];
     auth: AuthConfig;
-    headers: BackendKeyValue[];
+    headers: BackendKeyValueFull[];
     body: BodyConfig;
+}
+
+export interface WireExampleResponse {
+    id: string;
+    collection_id: string;
+    request_id: string;
+    name: string;
+    slug: string;
+    method: string;
+    url: string;
+    query_params: BackendKeyValueFull[];
+    path_variables: BackendKeyValueFull[];
+    auth: AuthConfig;
+    headers: BackendKeyValueFull[];
+    body: BodyConfig;
+    response_body: string;
+    response_headers: BackendKeyValue[];
+    response_cookies: BackendKeyValue[];
+    status: number;
+    status_text: string;
+    idx: number;
 }
 
 export interface WireFolderResponse {
@@ -84,10 +113,10 @@ export interface WireProxyPayload {
     name: string;
     method: string;
     url: string;
-    query_params: BackendKeyValue[];
-    path_variables: BackendKeyValue[];
+    query_params: BackendKeyValueFull[];
+    path_variables: BackendKeyValueFull[];
     auth: AuthConfig;
-    headers: BackendKeyValue[];
+    headers: BackendKeyValueFull[];
     body: BodyConfig;
     env_variables: EnvVariable[];
 }
@@ -132,10 +161,10 @@ export interface CreateRequestPayload {
     name: string;
     method: string;
     url: string;
-    query_params: BackendKeyValue[];
-    path_variables: BackendKeyValue[];
+    query_params: BackendKeyValueFull[];
+    path_variables: BackendKeyValueFull[];
     auth: AuthConfig;
-    headers: BackendKeyValue[];
+    headers: BackendKeyValueFull[];
     body: BodyConfig;
 }
 
@@ -143,11 +172,49 @@ export interface UpdateRequestPayload {
     name: string;
     method: string;
     url: string;
-    query_params: BackendKeyValue[];
-    path_variables: BackendKeyValue[];
+    query_params: BackendKeyValueFull[];
+    path_variables: BackendKeyValueFull[];
     auth: AuthConfig;
-    headers: BackendKeyValue[];
+    headers: BackendKeyValueFull[];
     body: BodyConfig;
+}
+
+export interface CreateExamplePayload {
+    collection_id: string;
+    request_id: string;
+    name: string;
+    method: string;
+    url: string;
+    query_params: BackendKeyValueFull[];
+    path_variables: BackendKeyValueFull[];
+    auth: AuthConfig;
+    headers: BackendKeyValueFull[];
+    body: BodyConfig;
+    response_body: string;
+    response_headers: BackendKeyValue[];
+    response_cookies: BackendKeyValue[];
+    status: number;
+    status_text: string;
+}
+
+export interface UpdateExamplePayload {
+    name: string;
+    method: string;
+    url: string;
+    query_params: BackendKeyValueFull[];
+    path_variables: BackendKeyValueFull[];
+    auth: AuthConfig;
+    headers: BackendKeyValueFull[];
+    body: BodyConfig;
+    response_body: string;
+    response_headers: BackendKeyValue[];
+    response_cookies: BackendKeyValue[];
+    status: number;
+    status_text: string;
+}
+
+export interface RenameExamplePayload {
+    name: string;
 }
 
 export interface RenameFolderPayload {
@@ -258,6 +325,17 @@ export const RenameRequest = (id: string, payload: RenameRequestPayload): Promis
 export const DeleteRequest = (id: string, method: string, name: string): Promise<void> =>
     api.DeleteRequest(id, method, name);
 export const DuplicateRequest = (id: string): Promise<WireRequestResponse> => api.DuplicateRequest(id);
+
+// Examples
+export const GetExample = (id: string): Promise<WireExampleResponse> => api.GetExample(id);
+export const CreateExample = (payload: CreateExamplePayload): Promise<WireExampleResponse> => api.CreateExample(payload);
+export const UpdateExample = (id: string, payload: UpdateExamplePayload): Promise<WireExampleResponse> =>
+    api.UpdateExample(id, payload);
+export const RenameExample = (id: string, payload: RenameExamplePayload): Promise<WireExampleResponse> =>
+    api.RenameExample(id, payload);
+export const DeleteExample = (id: string, name: string): Promise<void> =>
+    api.DeleteExample(id, name);
+export const DuplicateExample = (id: string): Promise<WireExampleResponse> => api.DuplicateExample(id);
 
 // Proxy (Send)
 export const SendRequest = (payload: WireProxyPayload): Promise<WireProxyResponse> => api.SendRequest(payload);

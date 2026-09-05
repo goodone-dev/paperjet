@@ -29,13 +29,13 @@ export type AuthConfig = NoneAuth | BearerAuth | BasicAuth | ApiKeyAuth | OAuth2
 
 export interface NoneBody { type: 'none' }
 export interface RawBody { type: 'raw'; raw?: { type: string; value: string } }
-export interface FormDataBody { type: 'form-data'; form_data?: BackendKeyValue[] }
-export interface UrlEncodedBody { type: 'x-www-form-urlencoded'; url_encoded?: BackendKeyValue[] }
+export interface FormDataBody { type: 'form-data'; form_data?: BackendKeyValueFull[] }
+export interface UrlEncodedBody { type: 'x-www-form-urlencoded'; url_encoded?: BackendKeyValueFull[] }
 export interface BinaryBody { type: 'binary'; binary?: string }
 export interface GraphqlBody { type: 'graphql' }
 export type BodyConfig = NoneBody | RawBody | FormDataBody | UrlEncodedBody | BinaryBody | GraphqlBody;
 
-export interface BackendKeyValue {
+export interface BackendKeyValueFull {
     key: string;
     type: string;
     value: string;
@@ -43,15 +43,20 @@ export interface BackendKeyValue {
     enabled?: boolean;
 }
 
+export interface BackendKeyValue {
+    key: string;
+    value: string;
+}
+
 export interface BackendRequest {
     id: string;
     name: string;
     method: HttpMethod | string;
     url: string;
-    query_params?: BackendKeyValue[];
-    path_variables?: BackendKeyValue[];
+    query_params?: BackendKeyValueFull[];
+    path_variables?: BackendKeyValueFull[];
     auth?: AuthConfig;
-    headers?: BackendKeyValue[];
+    headers?: BackendKeyValueFull[];
     body?: BodyConfig;
 }
 
@@ -60,6 +65,15 @@ export interface RequestSummary {
     name: string;
     method: HttpMethod | string;
     url?: string;
+    examples: ExampleSummary[];
+    expanded?: boolean;
+}
+
+export interface ExampleSummary {
+    id: string;
+    name: string;
+    method: string;
+    status: number;
 }
 
 export interface Folder {

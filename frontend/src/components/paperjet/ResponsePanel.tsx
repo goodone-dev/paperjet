@@ -2,15 +2,16 @@ import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Copy, Check, Download, Search, Maximize2, Minimize2, WrapText, Inbox } from 'lucide-react';
+import { Copy, Check, Search, Maximize2, Minimize2, WrapText, Inbox, BookmarkPlus, Code2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { tokenizeJSON } from '@/lib/json-format';
 import type { ResponseData, ResponseKeyValue } from '@/types/response';
-import { BodyRaw } from '@/types/tab';
+import type { BodyRaw } from '@/types/tab';
 import { openSearchPanel } from '@codemirror/search';
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { CodeEditor } from './CodeEditor';
 import { BodyPreview } from './BodyPreview';
+import { beautify } from '@/lib/raw-beautifier';
 
 type StatusKind = 'success' | 'warning' | 'error' | 'info';
 
@@ -40,19 +41,28 @@ interface ResponsePanelProps {
     response: ResponseData | null;
     isSending: boolean;
     isMaximized?: boolean;
+    onUpdate?: (patch: Partial<ResponseData>) => void;
     onToggleMaximize?: () => void;
+    onSaveAsExample?: () => void;
 }
 
 export const ResponsePanel: React.FC<ResponsePanelProps> = ({
     response,
     isSending,
     isMaximized,
+    onUpdate,
     onToggleMaximize,
+    onSaveAsExample,
 }) => {
     const [copied, setCopied] = useState(false);
+    const [saved, setSaved] = useState(false);
     const [formatMode, setFormatMode] = useState<string>('pretty');
     const [wrapText, setWrapText] = useState(false);
     const editorRef = useRef<ReactCodeMirrorRef>(null);
+    const update = useCallback((patch: Partial<ResponseData>) => {
+        if (!response) return;
+        onUpdate?.({ ...response, ...patch });
+    }, [onUpdate, response]);
 
     const bodyType = useMemo(() => {
         if (formatMode === 'raw') return 'text';
@@ -74,6 +84,24 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
+
+    const handleSaveAsExample = () => {
+        if (!onSaveAsExample) return;
+        try {
+            onSaveAsExample();
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
+        } catch (e) {
+            console.error('Failed to save as example', e);
+        }
+    };
+
+    const handleBeautify = useCallback(() => {
+        if (!response?.body) return;
+
+        const beautified = beautify(bodyType, response.body);
+        update({ body: beautified });
+    }, [bodyType, response, update]);
 
     if (isSending) {
         return (
@@ -135,22 +163,48 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
                         {response.statusText}
                     </span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Time</span>
-                    <span className="text-xs font-semibold text-success mono">{response.time} ms</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Size</span>
-                    <span className="text-xs font-semibold text-primary mono">{formatSize(response.size)}</span>
-                </div>
+                {onSaveAsExample != null && (
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Time</span>
+                        <span className="text-xs font-semibold text-success mono">{response.time} ms</span>
+                    </div>
+                )
+                }
+                {onSaveAsExample != null && (
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Size</span>
+                        <span className="text-xs font-semibold text-primary mono">{formatSize(response.size)}</span>
+                    </div>
+                )
+                }
                 <div className="ml-auto flex items-center gap-1">
                     <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={handleCopy}>
                         {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                         {copied ? 'Copied' : 'Copy'}
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5">
-                        <Download className="h-3.5 w-3.5" /> Save
-                    </Button>
+                    {onSaveAsExample && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs gap-1.5"
+                            onClick={handleSaveAsExample}
+                            data-testid="save-as-example-btn"
+                        >
+                            {saved ? <Check className="h-3.5 w-3.5 text-success" /> : <BookmarkPlus className="h-3.5 w-3.5" />}
+                            {saved ? 'Saved' : 'Save as Example'}
+                        </Button>
+                    )}
+                    {onSaveAsExample == null && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs gap-1.5"
+                            onClick={handleBeautify}
+                            data-testid="beautify-btn"
+                        >
+                            <Code2 className="h-3.5 w-3.5" /> Beautify
+                        </Button>
+                    )}
                     <Button
                         variant="ghost"
                         size="icon"
@@ -210,15 +264,23 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
                         <CodeEditor
                             ref={editorRef}
                             data={{ value: response.body, type: bodyType }}
+                            onChange={(value) => {
+                                if (value === response.body) return;
+                                update({ body: value });
+                            }}
                             className="text-sm border-0 bg-card outline-none flex-1 min-h-0"
                             height="100%"
-                            readonly={true}
+                            readonly={onSaveAsExample != null}
                             wrap={wrapText}
                         />
                     )}
                 </TabsContent>
                 <TabsContent value="headers" className="flex-1 mt-0 min-h-0">
-                    <KeyValueTable data={response.headers} />
+                    <KeyValueTable
+                        data={response.headers}
+                        readonly={onSaveAsExample != null}
+                        onChange={(headers) => update({ headers })}
+                    />
                 </TabsContent>
                 <TabsContent value="cookies" className="flex-1 mt-0 min-h-0">
                     {response.cookies.length === 0 ? (
@@ -226,7 +288,11 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
                             <p className="text-sm text-muted-foreground">No cookies were returned.</p>
                         </div>
                     ) : (
-                        <KeyValueTable data={response.cookies} />
+                        <KeyValueTable
+                            data={response.cookies}
+                            readonly={onSaveAsExample != null}
+                            onChange={(cookies) => update({ cookies })}
+                        />
                     )}
                 </TabsContent>
                 <TabsContent value="tests" className="flex-1 mt-0 min-h-0 p-5">
@@ -326,28 +392,57 @@ const JSONViewer: React.FC<{ code: string }> = ({ code }) => {
     );
 };
 
-const KeyValueTable: React.FC<{ data: ResponseKeyValue[] }> = ({ data }) => (
-    <ScrollArea className="h-full">
-        <div className="p-5">
-            <div className="rounded-lg border border-border overflow-hidden bg-card">
-                <div className="grid grid-cols-2 bg-secondary/50 border-b border-border text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
-                    <div className="px-4 py-2.5">Key</div>
-                    <div className="px-4 py-2.5 border-l border-border">Value</div>
-                </div>
-                <div className="divide-y divide-border">
-                    {data.map((h, i) => (
-                        <div key={`${h.key}-${i}`} className="grid grid-cols-2 hover:bg-secondary/30 transition-colors">
-                            <div className="px-4 py-2.5 text-[13px] mono font-medium text-primary">{h.key}</div>
-                            <div className="px-4 py-2.5 text-[13px] mono text-foreground/80 border-l border-border break-all">
-                                {h.value}
+const KeyValueTable: React.FC<{ data: ResponseKeyValue[]; onChange?: (data: ResponseKeyValue[]) => void; readonly?: boolean }> = ({ data, onChange, readonly }) => {
+    const handleChange = (index: number, field: 'key' | 'value', val: string) => {
+        if (!onChange || readonly) return;
+        const newData = [...data];
+        newData[index] = { ...newData[index], [field]: val };
+        onChange(newData);
+    };
+
+    return (
+        <ScrollArea className="h-full">
+            <div className="p-5">
+                <div className="rounded-lg border border-border overflow-hidden bg-card">
+                    <div className="grid grid-cols-2 bg-secondary/50 border-b border-border text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
+                        <div className="px-4 py-2.5">Key</div>
+                        <div className="px-4 py-2.5 border-l border-border">Value</div>
+                    </div>
+                    <div className="divide-y divide-border">
+                        {data.map((h, i) => (
+                            <div key={i} className="grid grid-cols-2 hover:bg-secondary/30 transition-colors">
+                                <div className="px-4 py-2.5 text-[13px] mono font-medium text-primary">
+                                    {!readonly && onChange ? (
+                                        <input
+                                            type="text"
+                                            value={h.key}
+                                            onChange={(e) => handleChange(i, 'key', e.target.value)}
+                                            className="w-full bg-transparent border-none outline-none"
+                                        />
+                                    ) : (
+                                        h.key
+                                    )}
+                                </div>
+                                <div className="px-4 py-2.5 text-[13px] mono text-foreground/80 border-l border-border break-all">
+                                    {!readonly && onChange ? (
+                                        <input
+                                            type="text"
+                                            value={h.value}
+                                            onChange={(e) => handleChange(i, 'value', e.target.value)}
+                                            className="w-full bg-transparent border-none outline-none"
+                                        />
+                                    ) : (
+                                        h.value
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </div>
-        </div>
-    </ScrollArea>
-);
+        </ScrollArea>
+    );
+};
 
 const TestResults: React.FC = () => (
     <div className="space-y-2">

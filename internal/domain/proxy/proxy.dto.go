@@ -11,10 +11,10 @@ type ProxyPayload struct {
 	Name          string                            `json:"name"`
 	Method        string                            `json:"method"`
 	URL           string                            `json:"url"`
-	QueryParams   []collection.KeyValue             `json:"query_params"`
-	PathVariables []collection.KeyValue             `json:"path_variables"`
+	QueryParams   []collection.KeyValueFull         `json:"query_params"`
+	PathVariables []collection.KeyValueFull         `json:"path_variables"`
 	Auth          collection.Auth                   `json:"auth"`
-	Headers       []collection.KeyValue             `json:"headers"`
+	Headers       []collection.KeyValueFull         `json:"headers"`
 	Body          collection.Body                   `json:"body"`
 	EnvVariables  []environment.EnvironmentVariable `json:"env_variables"`
 }

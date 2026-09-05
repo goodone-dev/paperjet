@@ -1,16 +1,23 @@
-import type { BackendKeyValue, KeyValueRow, AuthConfig, BodyConfig } from '@/types/collection';
-import type { BodyRaw, RequestTab } from '@/types/tab';
+import type { BackendKeyValueFull, KeyValueRow, AuthConfig, BodyConfig, BackendKeyValue } from '@/types/collection';
+import type { BodyRaw, RequestTab, ExampleTab } from '@/types/tab';
 import type { EnvVariable } from '@/types/environment';
 import type { HistoryEntry } from '@/types/history';
-import type { WireRequestResponse, WireProxyPayload } from './api';
+import type { WireRequestResponse, WireExampleResponse, WireProxyPayload } from './api';
+import { ResponseKeyValue } from '@/types/response';
 
 interface OpenRequestMeta {
     colId: string | null;
     folderId: string | null;
 }
 
+interface OpenExampleMeta {
+    colId: string | null;
+    folderId: string | null;
+    requestId: string | null;
+}
+
 function mapBackendKvsToRows(
-    items: BackendKeyValue[] | undefined,
+    items: BackendKeyValueFull[] | undefined,
     idPrefix: string,
     fallback: KeyValueRow[],
 ): KeyValueRow[] {
@@ -22,6 +29,17 @@ function mapBackendKvsToRows(
         value: p.value,
         description: p.description || '',
         enabled: p.enabled !== false,
+    }));
+}
+
+function mapBackendRespKvsToRows(
+    items: BackendKeyValue[] | undefined,
+    fallback: ResponseKeyValue[],
+): ResponseKeyValue[] {
+    if (!items || items.length === 0) return fallback;
+    return items.map((p, i) => ({
+        key: p.key,
+        value: p.value,
     }));
 }
 
@@ -69,6 +87,74 @@ export function mapBackendRequestToTab(full: WireRequestResponse, meta: OpenRequ
 }
 
 /**
+ * Backend example DTO → in-memory ExampleTab shape.
+ */
+export function mapBackendExampleToTab(full: WireExampleResponse, meta: OpenExampleMeta): Partial<ExampleTab> {
+    const body = (full.body || { type: 'none' }) as any;
+    return {
+        sourceId: full.id,
+        requestId: full.request_id || meta.requestId,
+        colId: meta.colId,
+        folderId: meta.folderId,
+        name: full.name,
+        method: full.method,
+        url: full.url || '',
+        queryParams: mapBackendKvsToRows(full.query_params, 'p', [
+            { id: 'p1', key: '', type: 'text', value: '', description: '', enabled: true },
+        ]),
+        headers: mapBackendKvsToRows(full.headers, 'h', [
+            { id: 'h1', key: 'Accept', type: 'text', value: 'application/json', description: '', enabled: true },
+            { id: 'h2', key: '', type: 'text', value: '', description: '', enabled: true },
+        ]),
+        bodyType: body?.type || 'none',
+        bodyRaw: { type: body?.raw?.type || 'json', value: body?.raw?.value } as BodyRaw,
+        bodyFormData: mapBackendKvsToRows(body?.form_data, 'f', [
+            { id: 'f1', key: '', type: 'text', value: '', description: '', enabled: true },
+        ]),
+        bodyUrlEncoded: mapBackendKvsToRows(body?.url_encoded, 'u', [
+            { id: 'u1', key: '', type: 'text', value: '', description: '', enabled: true },
+        ]),
+        bodyBinary: body?.binary || null,
+        pathVariables: mapBackendKvsToRows(full.path_variables, 'pv', []),
+        auth: mapBackendAuth(full.auth),
+        response: {
+            body: full.response_body,
+            headers: mapBackendRespKvsToRows(full.response_headers, []),
+            cookies: mapBackendRespKvsToRows(full.response_cookies, []),
+            status: full.status,
+            statusText: full.status_text,
+            bytes: [],
+            time: 0,
+            size: 0,
+            error: false
+        },
+        isDirty: false,
+        activeTab: 'params',
+    };
+}
+
+/**
+ * Tab shape → backend save payload for Example.
+ */
+export function mapExampleTabToSavePayload(tab: ExampleTab) {
+    return {
+        name: tab.name,
+        method: tab.method,
+        url: tab.url || '',
+        query_params: rowsToBackendKvs(tab.queryParams),
+        path_variables: rowsToBackendKvs(tab.pathVariables),
+        auth: tabAuthToBackend(tab.auth),
+        headers: rowsToBackendKvs(tab.headers),
+        body: tabBodyToBackend(tab),
+        response_body: tab.response?.body,
+        response_headers: rowsToBackendRespKvs(tab.response?.headers || []),
+        response_cookies: rowsToBackendRespKvs(tab.response?.cookies || []),
+        status: tab.response?.status || 200,
+        status_text: tab.response?.statusText || '',
+    };
+}
+
+/**
  * History entry (which stores backend-shaped payloads) → in-memory tab.
  * Used to "replay" a historical request in a new tab.
  */
@@ -103,13 +189,20 @@ export function mapHistoryEntryToTab(entry: HistoryEntry): Partial<RequestTab> {
     };
 }
 
-function rowsToBackendKvs(rows: KeyValueRow[] | undefined): BackendKeyValue[] {
+function rowsToBackendKvs(rows: KeyValueRow[] | undefined): BackendKeyValueFull[] {
     return (rows || []).filter((p) => p.key).map((p) => ({
         key: p.key,
         type: p.type,
         value: p.value,
         description: p.description || '',
         enabled: p.enabled !== false,
+    }));
+}
+
+function rowsToBackendRespKvs(rows: ResponseKeyValue[] | undefined): BackendKeyValue[] {
+    return (rows || []).filter((p) => p.key).map((p) => ({
+        key: p.key,
+        value: p.value,
     }));
 }
 
@@ -135,10 +228,10 @@ export interface BackendSavePayload {
     name: string;
     method: string;
     url: string;
-    query_params: BackendKeyValue[];
-    path_variables: BackendKeyValue[];
+    query_params: BackendKeyValueFull[];
+    path_variables: BackendKeyValueFull[];
     auth: AuthConfig;
-    headers: BackendKeyValue[];
+    headers: BackendKeyValueFull[];
     body: BodyConfig;
 }
 
@@ -146,7 +239,7 @@ export interface BackendSavePayload {
  * Tab shape → backend save payload. Used by both UpdateRequest and CreateRequest flows,
  * eliminating the duplicated auth/body/params serializer previously in useWorkspaceData.
  */
-export function mapTabToSavePayload(tab: RequestTab): BackendSavePayload {
+export function mapTabToSavePayload(tab: RequestTab | ExampleTab): BackendSavePayload {
     return {
         name: tab.name,
         method: tab.method,
