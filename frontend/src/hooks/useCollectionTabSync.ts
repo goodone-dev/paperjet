@@ -60,13 +60,21 @@ export function useCollectionTabSync(
                 changed = true;
                 continue;
             }
-            // Rename or move → mirror into the tab (keep local body/params dirty edits).
-            if (entry.name !== t.name || entry.colId !== t.colId || (entry.folderId ?? null) !== (t.folderId ?? null)) {
+            
+            // Mirror sidebar rename/move into tab, but preserve local edits when tab is dirty
+            const nameChanged = entry.name !== t.name && (!t.isDirty || t.baseline?.name === t.name);
+            const parentChanged = entry.colId !== t.colId || (entry.folderId ?? null) !== (t.folderId ?? null);
+
+            if (nameChanged || parentChanged) {
                 changed = true;
-                next.push({ ...(t as RequestTab), name: entry.name, colId: entry.colId, folderId: entry.folderId } as Tab);
+                next.push({
+                    ...(t as RequestTab),
+                    name: nameChanged ? entry.name : t.name,
+                    colId: entry.colId,
+                    folderId: entry.folderId,
+                } as Tab);
                 continue;
             }
-            next.push(t);
         }
 
         if (!changed) return;
