@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { loadState, saveState } from '@/lib/persist';
 import { mapTabToSavePayload } from '@/lib/request-mapper';
 import type { Workspace } from '@/types/workspace';
-import type { Collection, Folder, RequestSummary } from '@/types/collection';
+import type { Collection, ExampleSummary, Folder, RequestSummary } from '@/types/collection';
 import type { Environment, EnvVariable } from '@/types/environment';
 import type { RequestTab } from '@/types/tab';
 import type { DragSource, DropDest } from '@/types/dnd';
 import type { HistoryEntry } from '@/types/history';
 import { prune7Days } from '@/lib/history-format';
+import { findRequestById } from '@/lib/dnd-helpers';
 import {
     ListWorkspaces,
     CreateWorkspace,
@@ -109,6 +110,7 @@ function loadWsState(workspaceId: string | null): WsState {
 export function useWorkspaceData() {
     const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
     const [collections, setCollections] = useState<Collection[]>([]);
+    const [collectionsWorkspaceId, setCollectionsWorkspaceId] = useState<string | null>(null);
     const [environments, setEnvironments] = useState<Environment[]>([]);
 
     const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(() =>
@@ -162,7 +164,14 @@ export function useWorkspaceData() {
 
     // Load collections & environments whenever the active workspace changes
     useEffect(() => {
-        if (!activeWorkspaceId) return;
+        if (!activeWorkspaceId) {
+            setCollections([]);
+            setCollectionsWorkspaceId(null);
+            return;
+        }
+
+        let cancelled = false;
+        setCollectionsWorkspaceId(null);
 
         const savedTabs = loadState<any[] | null>(`tabs_${activeWorkspaceId}`, null) || [];
         const requiredColIds = new Set<string>();
@@ -182,7 +191,7 @@ export function useWorkspaceData() {
         Promise.all([
             ListCollections(activeWorkspaceId).catch(err => {
                 console.error('Failed to list collections:', err);
-                return [];
+                return null;
             }),
             ListEnvironments(activeWorkspaceId).catch(err => {
                 console.error('Failed to list environments:', err);
@@ -190,6 +199,7 @@ export function useWorkspaceData() {
             }),
             ...collectionPromises
         ]).then((results) => {
+            if (cancelled) return;
             const colList = results[0] || [];
             const envList = results[1] || [];
             const extraCols = results.slice(2).filter(Boolean);
@@ -220,7 +230,12 @@ export function useWorkspaceData() {
 
             const savedEnvId = loadState<string | null>(`activeEnvironmentId_${activeWorkspaceId}`, null);
             setEnvironments((envList || []).map((e: any) => ({ ...e, active: e.id === savedEnvId })));
-        })
+            if (results[0] !== null) setCollectionsWorkspaceId(activeWorkspaceId);
+        });
+
+        return () => {
+            cancelled = true;
+        };
     }, [activeWorkspaceId]);
 
     useEffect(() => saveState('activeWorkspaceId', activeWorkspaceId), [activeWorkspaceId]);
@@ -737,6 +752,17 @@ export function useWorkspaceData() {
         );
     }, []);
 
+    const updateExample = useCallback((colId: string, folderId: string | null, reqId: string, exampleId: string, patch: Partial<ExampleSummary>) => {
+        const update = <T extends Collection | Folder>(parent: T): T => ({
+            ...parent,
+            requests: (parent.requests || []).map((r) => r.id === reqId
+                ? { ...r, examples: (r.examples || []).map((ex) => ex.id === exampleId ? { ...ex, ...patch } : ex) }
+                : r),
+        });
+        if (folderId) mapFolder(setCollections, colId, folderId, update);
+        else mapCol(setCollections, colId, update);
+    }, []);
+
     const toggleRequestExpanded = useCallback((colId: string, folderId: string | null, reqId: string) => {
         if (folderId) {
             mapFolder(setCollections, colId, folderId, (f) => ({
@@ -996,6 +1022,34 @@ export function useWorkspaceData() {
         });
     }, []);
 
+    const moveExample = useCallback((src: DragSource, dest: DropDest) => {
+        setCollections((collections) => {
+            if (src.kind !== 'example' || src.colId !== dest.colId || !src.reqId || !dest.reqId) return collections;
+            const col = collections.find((c) => c.id === src.colId);
+            if (!col) return collections;
+            // Recheck current state after persistence; never remove from a missing destination.
+            const source = findRequestById(col.requests || [], col.folders || [], src.reqId);
+            const destination = findRequestById(col.requests || [], col.folders || [], dest.reqId);
+            const example = source?.examples?.find((ex) => ex.id === src.exampleId);
+            if (!source || !destination || !example || dest.beforeExampleId === example.id) return collections;
+
+            const examples = (destination.examples || []).filter((ex) => ex.id !== example.id);
+            const index = dest.beforeExampleId ? examples.findIndex((ex) => ex.id === dest.beforeExampleId) : -1;
+            if (dest.beforeExampleId && index < 0) return collections;
+            examples.splice(index < 0 ? examples.length : index, 0, example);
+            const patches: [string, Partial<RequestSummary>][] = [
+                [source.id, { examples: (source.examples || []).filter((ex) => ex.id !== example.id) }],
+                [destination.id, { examples, expanded: true }],
+            ];
+            const updated = patches.reduce((c, [id, patch]) => ({
+                ...c,
+                requests: (c.requests || []).map((r) => r.id === id ? { ...r, ...patch } : r),
+                folders: updateRequestInFolders(c.folders || [], id, patch),
+            }), col);
+            return collections.map((c) => c.id === col.id ? updated : c);
+        });
+    }, []);
+
     const moveFolder = useCallback((src: DragSource, dest: DropDest) => {
         setCollections((cs) => {
             let moved: Folder | null = null;
@@ -1153,6 +1207,7 @@ export function useWorkspaceData() {
         activeWorkspace,
         activeWorkspaceId,
         collections,
+        collectionsWorkspaceId,
         environments,
         history,
         setHistory,
@@ -1189,6 +1244,7 @@ export function useWorkspaceData() {
         duplicateRequest,
         updateRequest,
         moveRequest,
+        moveExample,
         moveFolder,
         toggleRequestExpanded,
         expandRequest,
@@ -1197,6 +1253,7 @@ export function useWorkspaceData() {
         renameExample,
         deleteExample,
         duplicateExample,
+        updateExample,
         // Environment
         createEnvironment,
         updateEnvironment,

@@ -29,11 +29,12 @@ interface UseDragAndDropReturn {
     onDragStart: (e: DragStartEvent) => void;
     onDragOver: (e: DragOverEvent) => void;
     onDragEnd: (e: DragEndEvent) => void;
+    onDragCancel: () => void;
 }
 
 export const useDragAndDrop = (
     collections: Collection[],
-    actions: Pick<SidebarActions, 'moveRequest' | 'moveFolder'>,
+    actions: Pick<SidebarActions, 'moveRequest' | 'moveFolder' | 'moveExample'>,
 ): UseDragAndDropReturn => {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -41,6 +42,11 @@ export const useDragAndDrop = (
 
     const [activeDrag, setActiveDrag] = useState<DragData | null>(null);
     const [overDropId, setOverDropId] = useState<string | null>(null);
+
+    const onDragCancel = () => {
+        setActiveDrag(null);
+        setOverDropId(null);
+    };
 
     const onDragStart = (e: DragStartEvent) => {
         setActiveDrag((e.active?.data?.current as DragData) ?? null);
@@ -55,8 +61,7 @@ export const useDragAndDrop = (
         const rawDst = e.over?.data?.current;
 
         // Always clear drag state regardless of whether the drop is valid.
-        setActiveDrag(null);
-        setOverDropId(null);
+        onDragCancel();
 
         if (!src || !rawDst) return;
 
@@ -65,6 +70,16 @@ export const useDragAndDrop = (
         // 1. Apply the move to workspace state.
         const moveArgs = resolveMoveArgs(src, dst);
         if (!moveArgs) return;
+
+        if (src.kind === 'example') {
+            const col = collections.find((c) => c.id === src.colId);
+            const payload = col && buildReorderPayload(col, src, dst);
+            if (!col || !payload) return;
+            ReorderCollectionItems(col.id, col.name, payload)
+                .then(() => actions.moveExample(moveArgs.src, moveArgs.dest))
+                .catch((err) => console.error('Failed to move example:', err));
+            return;
+        }
 
         if (src.kind === 'request') {
             actions.moveRequest(moveArgs.src, moveArgs.dest);
@@ -95,5 +110,6 @@ export const useDragAndDrop = (
         onDragStart,
         onDragOver,
         onDragEnd,
+        onDragCancel,
     };
 };

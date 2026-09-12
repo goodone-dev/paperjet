@@ -40,7 +40,7 @@ import {
     useDroppable,
     pointerWithin,
 } from '@dnd-kit/core';
-import { buildDragId, buildDropId, type DragData, type DropData } from '@/lib/dnd-helpers';
+import { buildDragId, buildDropId, findRequestById, resolveMoveArgs, type DragData, type DropData } from '@/lib/dnd-helpers';
 import { useDragAndDrop } from '@/hooks/useDragAndDrop';
 
 import { Button } from '@/components/ui/button';
@@ -111,6 +111,7 @@ export interface SidebarActions {
     deleteExample: (colId: string, folderId: string | null, reqId: string, exampleId: string, name: string) => void | Promise<void>;
     duplicateExample: (colId: string, folderId: string | null, reqId: string, exampleId: string) => void | Promise<void>;
     moveRequest: (src: DragSource, dest: DropDest) => void;
+    moveExample: (src: DragSource, dest: DropDest) => void;
     moveFolder: (src: DragSource, dest: DropDest) => void;
     createEnvironment: (name: string) => void | Promise<void>;
     renameEnvironment: (id: string, name: string) => void | Promise<void>;
@@ -306,19 +307,17 @@ const FolderDragGhost: React.FC<{ folderId: string; collections: Collection[] }>
     );
 };
 
-const RequestDragGhost: React.FC<{ reqId: string; collections: Collection[] }> = ({ reqId, collections }) => {
+const RequestDragGhost: React.FC<{ reqId: string; exampleId?: string; collections: Collection[] }> = ({ reqId, exampleId, collections }) => {
     const req = collections
-        .flatMap((c) => [
-            ...(c.requests ?? []),
-            ...(c.folders ?? []).flatMap((f) => f.requests ?? []),
-        ])
-        .find((r) => r.id === reqId);
+        .map((c) => findRequestById(c.requests ?? [], c.folders ?? [], reqId))
+        .find(Boolean);
+    const item = exampleId ? req?.examples?.find((ex) => ex.id === exampleId) : req;
 
-    if (!req) return null;
+    if (!item) return null;
     return (
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-card border border-primary/30 shadow-lg shadow-black/20 opacity-95 min-w-[160px]">
-            <MethodLabel method={req.method} className="w-11 shrink-0 text-left" />
-            <span className="text-[13px] truncate text-foreground/90">{req.name}</span>
+            <MethodLabel method={item.method} className="w-11 shrink-0 text-left" />
+            <span className="text-[13px] truncate text-foreground/90">{item.name}</span>
         </div>
     );
 };
@@ -385,6 +384,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         onDragStart,
         onDragOver,
         onDragEnd,
+        onDragCancel,
     } = useDragAndDrop(actions.collections, actions);
 
     return (
@@ -457,10 +457,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         {activeView === 'collections' && (
                             <DndContext
                                 sensors={sensors}
-                                collisionDetection={pointerWithin}
+                                collisionDetection={(args) => {
+                                    const src = args.active.data.current as DragData | undefined;
+                                    if (src?.kind !== 'example') return pointerWithin(args);
+                                    return pointerWithin({
+                                        ...args,
+                                        droppableContainers: args.droppableContainers.filter((container) => {
+                                            const dst = container.data.current as DropData | undefined;
+                                            return dst && resolveMoveArgs(src, dst) !== null;
+                                        }),
+                                    });
+                                }}
                                 onDragStart={onDragStart}
                                 onDragOver={onDragOver}
                                 onDragEnd={onDragEnd}
+                                onDragCancel={onDragCancel}
                             >
                                 <CollectionsView
                                     actions={actions}
@@ -480,8 +491,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     {activeDrag?.kind === 'folder' && (
                                         <FolderDragGhost folderId={activeDrag.folderId} collections={actions.collections} />
                                     )}
-                                    {activeDrag?.kind === 'request' && (
-                                        <RequestDragGhost reqId={activeDrag.reqId} collections={actions.collections} />
+                                    {(activeDrag?.kind === 'request' || activeDrag?.kind === 'example') && (
+                                        <RequestDragGhost reqId={activeDrag.reqId} exampleId={activeDrag.kind === 'example' ? activeDrag.exampleId : undefined} collections={actions.collections} />
                                     )}
                                 </DragOverlay>
                             </DndContext>
@@ -1103,6 +1114,8 @@ interface ExampleRowProps {
     editApi: EditApi;
     openConfirm: SidebarProps['openConfirm'];
     isActive: boolean;
+    activeDragId: string | null;
+    overDropId: string | null;
 }
 
 const ExampleRow: React.FC<ExampleRowProps> = ({
@@ -1115,9 +1128,23 @@ const ExampleRow: React.FC<ExampleRowProps> = ({
     editApi,
     openConfirm,
     isActive,
+    activeDragId,
+    overDropId,
 }) => {
     const { edit } = editApi;
     const isRenaming = edit?.mode === 'rename' && edit.kind === 'example' && edit.id === example.id;
+    const dragData: DragData = { kind: 'example', colId: col.id, folderId: folder?.id, reqId: req.id, exampleId: example.id };
+    const myDragId = buildDragId(dragData);
+    const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+        id: myDragId,
+        data: dragData,
+        disabled: isRenaming,
+    });
+    const dropData: DropData = { kind: 'example', colId: col.id, folderId: folder?.id, reqId: req.id, exampleId: example.id };
+    const myDropId = buildDropId(dropData);
+    const { setNodeRef: setDropRef } = useDroppable({ id: myDropId, data: dropData });
+    const setRef = (el: HTMLDivElement | null) => { setDragRef(el); setDropRef(el); };
+    const isInsertTarget = overDropId === myDropId && activeDragId !== myDragId;
 
     const items: MenuEntry[] = [
         {
@@ -1163,30 +1190,36 @@ const ExampleRow: React.FC<ExampleRowProps> = ({
     };
 
     return (
-        <ContextWrap items={items}>
-            <div
-                data-testid={`example-item-${example.id}`}
-                data-active={isActive ? 'true' : undefined}
-                onClick={() =>
-                    !isRenaming &&
-                    onOpenExample({
-                        ...example,
-                        colId: col.id,
-                        folderId: folder?.id ?? null,
-                        requestId: req.id,
-                    })
-                }
-                onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    editApi.startRename('example', example.id, col.id, folder?.id, req.id);
-                }}
-                className={cn(
-                    'group w-full flex items-center gap-2 pl-6 pr-2 py-1 rounded-md transition-colors text-left cursor-pointer',
-                    !isActive && 'hover:bg-sidebar-hover',
-                    isActive && 'bg-primary-soft text-primary font-medium',
-                )}
-            >
+        <>
+            {isInsertTarget && <div className="mx-2 h-0.5 rounded-full bg-primary transition-all" />}
+            <ContextWrap items={items}>
+                <div
+                    ref={setRef}
+                    {...attributes}
+                    {...listeners}
+                    data-testid={`example-item-${example.id}`}
+                    data-active={isActive ? 'true' : undefined}
+                    onClick={() =>
+                        !isRenaming &&
+                        onOpenExample({
+                            ...example,
+                            colId: col.id,
+                            folderId: folder?.id ?? null,
+                            requestId: req.id,
+                        })
+                    }
+                    onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        editApi.startRename('example', example.id, col.id, folder?.id, req.id);
+                    }}
+                    className={cn(
+                        'group w-full flex items-center gap-2 pl-6 pr-2 py-1 rounded-md transition-colors text-left cursor-pointer',
+                        !isActive && 'hover:bg-sidebar-hover',
+                        isDragging && 'opacity-0 pointer-events-none',
+                        isActive && 'bg-primary-soft text-primary font-medium',
+                    )}
+                >
                 {getStatusBadge(example.status)}
                 {isRenaming ? (
                     <InlineEdit
@@ -1202,8 +1235,9 @@ const ExampleRow: React.FC<ExampleRowProps> = ({
                 )}
 
                 {!isRenaming && <RowActions items={items} testId={`example-menu-${example.id}`} indicator={null} />}
-            </div>
-        </ContextWrap>
+                </div>
+            </ContextWrap>
+        </>
     );
 };
 
@@ -1282,8 +1316,9 @@ const RequestRow: React.FC<RequestRowProps> = ({
         setDropRef(el);
     };
 
-    // Insertion-line indicator: show above this request when it's the current drop target.
-    const isInsertTarget = overDropId === myDropId && activeDragId !== myDragId;
+    // Examples append into another request. Requests retain their insertion line.
+    const isExampleDropTarget = activeDragId?.startsWith('drag:ex:') && overDropId === myDropId;
+    const isInsertTarget = !activeDragId?.startsWith('drag:ex:') && overDropId === myDropId && activeDragId !== myDragId;
 
     const handleRowClick = () => {
         if (isRenaming) return;
@@ -1321,6 +1356,7 @@ const RequestRow: React.FC<RequestRowProps> = ({
                         'group w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md transition-colors text-left cursor-pointer',
                         !isActive && 'hover:bg-sidebar-hover',
                         isDragging && 'opacity-0 pointer-events-none',
+                        isExampleDropTarget && 'ring-1 ring-inset ring-primary bg-primary-soft/40',
                         isActive && 'bg-primary-soft text-primary font-medium',
                     )}
                 >
@@ -1363,6 +1399,8 @@ const RequestRow: React.FC<RequestRowProps> = ({
                                 editApi={editApi}
                                 openConfirm={openConfirm}
                                 isActive={activeExampleSourceId === ex.id}
+                                activeDragId={activeDragId}
+                                overDropId={overDropId}
                             />
                         ))}
                         {isCreatingExample && (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Save, ChevronDown } from 'lucide-react';
+import { Play, Save, ChevronDown, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -19,10 +19,11 @@ interface ExamplePanelProps {
     onUpdate: (patch: Partial<ExampleTab> & { id: string }) => void;
     onTry: () => void;
     onSave: () => void;
+    onDiscard?: () => void;
     envVariables?: EnvVariable[];
 }
 
-export const ExamplePanel: React.FC<ExamplePanelProps> = ({ example, onUpdate, onTry, onSave, envVariables = [] }) => {
+export const ExamplePanel: React.FC<ExamplePanelProps> = ({ example, onUpdate, onTry, onSave, onDiscard, envVariables = [] }) => {
     const update = (patch: Partial<ExampleTab>) => onUpdate({ ...example, ...patch, id: example.id });
 
     const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,6 +86,33 @@ export const ExamplePanel: React.FC<ExamplePanelProps> = ({ example, onUpdate, o
                     >
                         <Play className="h-4 w-4" fill="currentColor" /> Try
                     </Button>
+                    <Button
+                        variant="outline"
+                        className={cn(
+                            'h-11 px-3 bg-card relative',
+                            example.isDirty && example.sourceId && 'border-warning/60 text-warning hover:text-warning',
+                        )}
+                        onClick={onSave}
+                        title={example.sourceId ? 'Save' : 'Not a saved example'}
+                        data-testid="save-example-btn"
+                    >
+                        <Save className="h-4 w-4" />
+                        {example.isDirty && example.sourceId && (
+                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-warning" />
+                        )}
+                    </Button>
+                    {onDiscard && (
+                        <Button
+                            variant="outline"
+                            className="h-11 px-3 bg-card"
+                            onClick={onDiscard}
+                            disabled={!example.isDirty}
+                            title={example.isDirty ? 'Discard local changes' : 'No changes to discard'}
+                            data-testid="discard-example-btn"
+                        >
+                            <Undo2 className="h-4 w-4" />
+                        </Button>
+                    )}
                 </div>
             </div>
 

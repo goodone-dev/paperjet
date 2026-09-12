@@ -11,4 +11,5 @@ import (
 type CollectionExampleRepository interface {
 	database.BaseRepository[gorm.DB, uuid.UUID, CollectionExample]
 	FindMaxIdx(ctx context.Context, conds map[string]any) (maxIdx int, err error)
+	UpdateIdxAndRequest(ctx context.Context, id uuid.UUID, idx int, requestID uuid.UUID, trx *gorm.DB) error
 }

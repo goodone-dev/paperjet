@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { loadState, saveState } from '@/lib/persist';
-import type { RequestTab, RequestTabSnapshot, Tab, EnvironmentTab, ExampleTab } from '@/types/tab';
+import type { RequestTab, RequestTabSnapshot, Tab, EnvironmentTab, ExampleTab, ExampleTabSnapshot } from '@/types/tab';
 import type { KeyValueRow } from '@/types/collection';
 import type { Environment } from '@/types/environment';
 
@@ -72,9 +72,12 @@ const newExampleTemplate = (overrides: Partial<ExampleTab> = {}): ExampleTab => 
 
 const DEFAULT_TAB = (): RequestTab => newRequestTemplate({});
 
-// Capture the editable fields of a request so we can compare / restore later.
-function snapshot(t: RequestTab): RequestTabSnapshot {
-    return {
+// Capture the editable fields of a request or example so we can compare / restore later.
+function snapshot(t: RequestTab): RequestTabSnapshot;
+function snapshot(t: ExampleTab): ExampleTabSnapshot;
+function snapshot(t: RequestTab | ExampleTab): RequestTabSnapshot | ExampleTabSnapshot;
+function snapshot(t: RequestTab | ExampleTab): RequestTabSnapshot | ExampleTabSnapshot {
+    const value = {
         name: t.name,
         method: t.method,
         url: t.url,
@@ -82,12 +85,17 @@ function snapshot(t: RequestTab): RequestTabSnapshot {
         pathVariables: JSON.parse(JSON.stringify(t.pathVariables || [])),
         headers: JSON.parse(JSON.stringify(t.headers || [])),
         bodyType: t.bodyType,
-        bodyRaw: t.bodyRaw,
+        bodyRaw: t.bodyRaw ? clone(t.bodyRaw) : null,
         bodyFormData: JSON.parse(JSON.stringify(t.bodyFormData || [])),
         bodyUrlEncoded: JSON.parse(JSON.stringify(t.bodyUrlEncoded || [])),
         bodyBinary: t.bodyBinary ?? null,
         auth: JSON.parse(JSON.stringify(t.auth || { type: 'none' })),
     };
+    return t.type === 'example' ? { ...value, response: clone(t.response) } : value;
+}
+
+function clone<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value));
 }
 
 interface TabState {
@@ -103,7 +111,7 @@ function sortByPin(tabs: Tab[]): Tab[] {
     const pinned: Tab[] = [];
     const rest: Tab[] = [];
     for (const t of tabs) {
-        if (t.type === 'request' && t.pinned) pinned.push(t);
+        if ((t.type === 'request' || t.type === 'example') && t.pinned) pinned.push(t);
         else rest.push(t);
     }
     return [...pinned, ...rest];
@@ -161,20 +169,23 @@ export function useTabs(workspaceId: string | null) {
 
     const updateTab = useCallback(
         (patch: Partial<RequestTab | ExampleTab> & { id: string }) => {
-            setTabs((ts) =>
-                ts.map((t) => (t.id === patch.id ? ({ ...t, ...patch, isDirty: true } as Tab) : t)),
-            );
+            setTabs((ts) => ts.map((t) => {
+                if (t.id !== patch.id || (t.type !== 'request' && t.type !== 'example')) return t;
+                const next = { ...t, ...patch } as RequestTab | ExampleTab;
+                return { ...next, isDirty: t.isDirty || JSON.stringify(snapshot(t)) !== JSON.stringify(snapshot(next)) };
+            }));
         },
         [setTabs],
     );
 
     const markClean = useCallback(
-        (id: string) => {
+        (id: string, submitted?: RequestTab | ExampleTab) => {
             setTabs((ts) =>
                 ts.map((t) => {
                     if (t.id !== id) return t;
-                    if (t.type !== 'request') return t;
-                    return { ...t, isDirty: false, baseline: snapshot(t) } as Tab;
+                    if (t.type !== 'request' && t.type !== 'example') return t;
+                    const baseline = clone(snapshot(submitted && submitted.id === id ? submitted : t));
+                    return { ...t, isDirty: JSON.stringify(snapshot(t)) !== JSON.stringify(baseline), baseline } as Tab;
                 }),
             );
         },
@@ -186,10 +197,10 @@ export function useTabs(workspaceId: string | null) {
         (id: string) => {
             setTabs((ts) =>
                 ts.map((t) => {
-                    if (t.id !== id || t.type !== 'request') return t;
+                    if (t.id !== id || (t.type !== 'request' && t.type !== 'example')) return t;
                     const base = t.baseline;
                     if (!base) return { ...t, isDirty: false } as Tab;
-                    return { ...t, ...base, isDirty: false } as Tab;
+                    return { ...t, ...clone(base), isDirty: false } as Tab;
                 }),
             );
         },
@@ -200,7 +211,9 @@ export function useTabs(workspaceId: string | null) {
         (id: string) => {
             setTabs((ts) => {
                 const next = ts.map((t) =>
-                    t.id === id && t.type === 'request' ? ({ ...t, pinned: !t.pinned } as Tab) : t,
+                    t.id === id && (t.type === 'request' || t.type === 'example')
+                        ? ({ ...t, pinned: !t.pinned } as Tab)
+                        : t,
                 );
                 return sortByPin(next);
             });
@@ -250,6 +263,7 @@ export function useTabs(workspaceId: string | null) {
                 }
             }
             const newEx = newExampleTemplate(ex);
+            newEx.baseline = snapshot(newEx);
             setTabs((ts) => [...ts, newEx]);
             setActiveTabId(newEx.id);
         },
@@ -279,19 +293,18 @@ export function useTabs(workspaceId: string | null) {
     const duplicateTab = useCallback(
         (id: string) => {
             const src = tabs.find((t) => t.id === id);
-            if (!src || src.type !== 'request') return;
-            const copy: RequestTab = {
-                ...(src as RequestTab),
-                id: `req-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            if (!src || (src.type !== 'request' && src.type !== 'example')) return;
+            const copy = {
+                ...clone(src),
+                id: `${src.type === 'request' ? 'req' : 'ex'}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
                 sourceId: '',
-                response: null,
-                isSending: false,
+                ...(src.type === 'request' ? { response: null, isSending: false } : {}),
                 pinned: false,
-            };
+                isDirty: true,
+            } as RequestTab | ExampleTab;
             copy.baseline = snapshot(copy);
-            const idx = tabs.findIndex((t) => t.id === id);
             const next = [...tabs];
-            next.splice(idx + 1, 0, copy);
+            next.splice(tabs.findIndex((t) => t.id === id) + 1, 0, copy);
             setTabs(sortByPin(next));
             setActiveTabId(copy.id);
         },
@@ -300,7 +313,7 @@ export function useTabs(workspaceId: string | null) {
 
     const closeOthers = useCallback(
         (id: string) => {
-            setTabs((ts) => ts.filter((t) => t.id === id || (t.type === 'request' && t.pinned)));
+            setTabs((ts) => ts.filter((t) => t.id === id || ((t.type === 'request' || t.type === 'example') && t.pinned)));
             setActiveTabId(id);
         },
         [setActiveTabId, setTabs],
@@ -308,7 +321,7 @@ export function useTabs(workspaceId: string | null) {
 
     const closeAll = useCallback(() => {
         setTabState((prev) => {
-            const pinnedOnly = prev.tabs.filter((t) => t.type === 'request' && t.pinned);
+            const pinnedOnly = prev.tabs.filter((t) => (t.type === 'request' || t.type === 'example') && t.pinned);
             if (pinnedOnly.length > 0) {
                 return { ...prev, tabs: pinnedOnly, activeTabId: pinnedOnly[0].id };
             }
@@ -344,6 +357,18 @@ export function useTabs(workspaceId: string | null) {
         [tabs, activeTabId, setActiveTabId, setTabs],
     );
 
+    const reorderTabs = useCallback((startIndex: number, endIndex: number) => {
+        setTabs((ts) => {
+            if (startIndex === endIndex || startIndex < 0 || endIndex < 0 || startIndex >= ts.length || endIndex >= ts.length) {
+                return ts;
+            }
+            const next = [...ts];
+            const [moved] = next.splice(startIndex, 1);
+            next.splice(endIndex, 0, moved);
+            return sortByPin(next);
+        });
+    }, [setTabs]);
+
     return {
         tabs,
         activeTabId,
@@ -363,6 +388,7 @@ export function useTabs(workspaceId: string | null) {
         closeOthers,
         closeAll,
         forceCloseAll,
+        reorderTabs,
     };
 }
 

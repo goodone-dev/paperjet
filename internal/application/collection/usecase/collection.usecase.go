@@ -49,6 +49,7 @@ func (u *collectionUsecase) buildTree(ctx context.Context, col *collection.Colle
 	folders, _ := u.folderRepo.FindAll(ctx, map[string]any{"collection_id": col.ID})
 	requests, _ := u.requestRepo.FindAll(ctx, map[string]any{"collection_id": col.ID})
 	examples, _ := u.exampleRepo.FindAll(ctx, map[string]any{"collection_id": col.ID})
+	sort.SliceStable(examples, func(i, j int) bool { return examples[i].Idx < examples[j].Idx })
 
 	colSortOrder := col.SortOrder
 	if colSortOrder == "" {
@@ -126,10 +127,7 @@ func (u *collectionUsecase) buildTree(ctx context.Context, col *collection.Colle
 			for _, ex := range examples {
 				if ex.RequestID == r.ID {
 					reqNode.Examples = append(reqNode.Examples, collection.ExampleNode{
-						ID:     ex.ID.String(),
-						Name:   ex.Name,
-						Method: ex.Method,
-						Status: ex.Status,
+						ID: ex.ID.String(), Name: ex.Name, Method: ex.Method, Status: ex.Status,
 					})
 				}
 			}
@@ -446,6 +444,77 @@ func (u *collectionUsecase) ReorderItems(ctx context.Context, collectionID uuid.
 		parentFolderID = &id
 	}
 
+	// Example reorder: items are examples under a parent request
+	if payload.ParentRequestID != nil {
+		if parentFolderID != nil {
+			return errors.NewBadRequestError("cannot specify both parent folder and parent request")
+		}
+		parentReqID, err := uuid.Parse(*payload.ParentRequestID)
+		if err != nil || parentReqID == uuid.Nil {
+			return errors.NewBadRequestError("invalid parent request ID")
+		}
+		trx, err := u.exampleRepo.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		committed := false
+		defer func() {
+			if !committed {
+				u.exampleRepo.Rollback(trx)
+			}
+		}()
+		var parentReq collection.CollectionRequest
+		if err := trx.WithContext(ctx).Where("id = ?", parentReqID).Take(&parentReq).Error; err != nil {
+			return err
+		}
+		if parentReq.CollectionID != collectionID {
+			return errors.NewBadRequestError("destination request must belong to collection")
+		}
+
+		ids := make([]uuid.UUID, len(payload.Items))
+		for i, item := range payload.Items {
+			if item.Type != collection.TreeTypeExample {
+				return errors.NewBadRequestError("parent request reorder accepts examples only")
+			}
+			id, err := uuid.Parse(item.ID)
+			if err != nil || id == uuid.Nil {
+				return errors.NewBadRequestError("invalid example ID")
+			}
+			ids[i] = id
+		}
+		var examples []collection.CollectionExample
+		if err := trx.WithContext(ctx).Where("id IN ?", ids).Find(&examples).Error; err != nil {
+			return err
+		}
+		if len(examples) != len(ids) {
+			return errors.NewBadRequestError("invalid example ID")
+		}
+		for _, ex := range examples {
+			if ex.CollectionID != collectionID {
+				return errors.NewBadRequestError("example must belong to collection")
+			}
+		}
+		for i, id := range ids {
+			if err := u.exampleRepo.UpdateIdxAndRequest(ctx, id, i, parentReqID, trx); err != nil {
+				return err
+			}
+		}
+		if result := u.exampleRepo.Commit(trx); result.Error != nil {
+			return result.Error
+		}
+		committed = true
+		return nil
+	}
+
+	for _, item := range payload.Items {
+		if item.Type != collection.TreeTypeFolder && item.Type != collection.TreeTypeRequest {
+			return errors.NewBadRequestError("folder reorder accepts folders and requests only")
+		}
+		if id, err := uuid.Parse(item.ID); err != nil || id == uuid.Nil {
+			return errors.NewBadRequestError("invalid item ID")
+		}
+	}
+
 	for i, item := range payload.Items {
 		id, err := uuid.Parse(item.ID)
 		if err != nil {
@@ -455,11 +524,11 @@ func (u *collectionUsecase) ReorderItems(ctx context.Context, collectionID uuid.
 		switch item.Type {
 		case collection.TreeTypeFolder:
 			if err := u.folderRepo.UpdateIdxAndParent(ctx, id, i, parentFolderID); err != nil {
-				logger.Error(ctx, err, "❌ Failed to reorder folder").Write()
+				logger.Error(ctx, err, "Failed to reorder folder").Write()
 			}
 		case collection.TreeTypeRequest:
 			if err := u.requestRepo.UpdateIdxAndFolder(ctx, id, i, parentFolderID); err != nil {
-				logger.Error(ctx, err, "❌ Failed to reorder request").Write()
+				logger.Error(ctx, err, "Failed to reorder request").Write()
 			}
 		}
 	}
@@ -467,12 +536,12 @@ func (u *collectionUsecase) ReorderItems(ctx context.Context, collectionID uuid.
 	if parentFolderID != nil {
 		_, err := u.UpdateFolderSortOrder(ctx, *parentFolderID, string(collection.SortOrderDefault))
 		if err != nil {
-			logger.Error(ctx, err, "❌ Failed to update folder sort order to default").Write()
+			logger.Error(ctx, err, "Failed to update folder sort order to default").Write()
 		}
 	} else {
 		_, err := u.UpdateSortOrder(ctx, collectionID, string(collection.SortOrderDefault))
 		if err != nil {
-			logger.Error(ctx, err, "❌ Failed to update collection sort order to default").Write()
+			logger.Error(ctx, err, "Failed to update collection sort order to default").Write()
 		}
 	}
 

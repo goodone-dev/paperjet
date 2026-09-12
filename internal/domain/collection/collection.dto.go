@@ -63,6 +63,7 @@ type TreeType string
 const (
 	TreeTypeFolder  TreeType = "folder"
 	TreeTypeRequest TreeType = "request"
+	TreeTypeExample TreeType = "example"
 )
 
 type SortOrder string
@@ -73,6 +74,7 @@ const (
 )
 
 type ReorderItemsRequest struct {
-	ParentFolderID *string          `json:"parent_folder_id"`
-	Items          []CollectionTree `json:"items,omitempty"`
+	ParentFolderID  *string          `json:"parent_folder_id"`
+	ParentRequestID *string          `json:"parent_request_id,omitempty"`
+	Items           []CollectionTree `json:"items,omitempty"`
 }

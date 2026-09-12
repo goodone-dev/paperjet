@@ -87,6 +87,7 @@ export default function AppWorkspace() {
         closeOthers,
         closeAll,
         forceCloseAll,
+        reorderTabs,
     } = tabsApi;
 
     // Open a collection request.
@@ -166,15 +167,37 @@ export default function AppWorkspace() {
     );
 
     const handleSaveExample = useCallback(async () => {
-        if (!activeTab || activeTab.type !== 'example' || !activeTab.sourceId) return;
+        if (!activeTab || activeTab.type !== 'example') return;
+        const exTab = activeTab as ExampleTab;
+        const submitted = JSON.parse(JSON.stringify(exTab)) as ExampleTab;
+        if (!exTab.sourceId) {
+            if (!exTab.colId || !exTab.requestId) return;
+            const res = await data.addExample(exTab.colId, exTab.folderId ?? null, exTab.requestId, {
+                ...mapExampleTabToSavePayload(submitted), collection_id: exTab.colId, request_id: exTab.requestId,
+            });
+            if (res) {
+                updateTab({ id: exTab.id, sourceId: res.id });
+                markClean(exTab.id, submitted);
+            }
+            return;
+        }
+        const sourceId = exTab.sourceId;
+        if (!sourceId) return;
         try {
-            const payload = mapExampleTabToSavePayload(activeTab as ExampleTab);
-            await UpdateExample(activeTab.sourceId, payload);
-            markClean(activeTab.id);
+            const payload = mapExampleTabToSavePayload(submitted);
+            await UpdateExample(sourceId, payload);
+            markClean(exTab.id, submitted);
+            if (exTab.colId && exTab.requestId) {
+                data.updateExample(exTab.colId, exTab.folderId ?? null, exTab.requestId, sourceId, {
+                    name: exTab.name,
+                    method: exTab.method,
+                    status: exTab.response?.status ?? 200,
+                });
+            }
         } catch (err) {
             console.error('Failed to save example', err);
         }
-    }, [activeTab, markClean]);
+    }, [activeTab, markClean, data, updateTab]);
 
     const tryRequest = useCallback(async () => {
         if (!activeTab || activeTab.type !== 'example') return;
@@ -262,7 +285,15 @@ export default function AppWorkspace() {
     // Keep environment tabs in sync with rename/delete of underlying env
     useEnvironmentTabSync(tabs, activeTabId, data.environments, { setTabs, setActiveTabId, closeAll });
     // Keep request tabs in sync when a sourced request is renamed / moved / deleted.
-    useCollectionTabSync(tabs, data.collections, activeTabId, setActiveTabId, { setTabs });
+    useCollectionTabSync(
+        tabs,
+        data.collections,
+        data.collectionsWorkspaceId,
+        data.activeWorkspaceId,
+        activeTabId,
+        setActiveTabId,
+        { setTabs },
+    );
 
     const activeRequestSourceId =
         activeTab?.type === 'request' ? (activeTab as RequestTab).sourceId ?? null : null;
@@ -276,7 +307,7 @@ export default function AppWorkspace() {
         onDiscardChanges: discardChanges,
         onClose: (id: string) => {
             const tab = tabs.find((t) => t.id === id);
-            if (tab && tab.type === 'request' && tab.isDirty) {
+            if (tab && (tab.type === 'request' || tab.type === 'example') && tab.isDirty) {
                 openConfirm({
                     title: 'Close unsaved tab?',
                     description: 'You have unsaved changes. Are you sure you want to close this tab?',
@@ -302,6 +333,7 @@ export default function AppWorkspace() {
                 onConfirm: () => closeAll(),
             }),
         onForceClose: () => forceCloseAll(),
+        onReorderTabs: reorderTabs,
     };
 
     const openMove = useCallback((col: Collection) => setMove({ open: true, col }), []);
@@ -344,6 +376,7 @@ export default function AppWorkspace() {
         deleteExample: data.deleteExample,
         duplicateExample: data.duplicateExample,
         moveRequest: data.moveRequest,
+        moveExample: data.moveExample,
         moveFolder: data.moveFolder,
         createEnvironment: data.createEnvironment,
         renameEnvironment: data.renameEnvironment,
@@ -415,6 +448,7 @@ export default function AppWorkspace() {
                                         onUpdate={updateTab}
                                         onTry={tryRequest}
                                         onSave={handleSaveExample}
+                                        onDiscard={() => discardChanges((activeTab as ExampleTab).id)}
                                         envVariables={activeEnvVars}
                                     />
                                 </Panel>

@@ -243,7 +243,7 @@ export interface MoveCollectionPayload {
 }
 
 export interface CollectionTreeItem {
-    type: 'folder' | 'request';
+    type: 'folder' | 'request' | 'example';
     id: string;
     name: string;
     method?: string;
@@ -253,6 +253,7 @@ export interface CollectionTreeItem {
 
 export interface ReorderCollectionItemsPayload {
     parent_folder_id?: string;
+    parent_request_id?: string;
     items: CollectionTreeItem[];
 }
 

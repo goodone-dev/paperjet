@@ -5,7 +5,7 @@
  * All functions here are side-effect-free and independently testable.
  */
 
-import type { Collection, Folder, RequestSummary } from '@/types/collection';
+import type { Collection, ExampleSummary, Folder, RequestSummary } from '@/types/collection';
 import type { DragSource, DropDest } from '@/types/dnd';
 import type { ReorderCollectionItemsPayload } from '@/lib/api';
 
@@ -13,6 +13,7 @@ import type { ReorderCollectionItemsPayload } from '@/lib/api';
 
 export type DragData =
     | { kind: 'request'; colId: string; folderId?: string; reqId: string }
+    | { kind: 'example'; colId: string; folderId?: string; reqId: string; exampleId: string }
     | { kind: 'folder'; colId: string; folderId: string };
 
 export type DropData =
@@ -20,13 +21,16 @@ export type DropData =
     | { kind: 'folder_before'; colId: string; folderId: string; parentFolderId: string | null }
     | { kind: 'folder_end'; colId: string; folderId: string }
     | { kind: 'request'; colId: string; folderId?: string; reqId: string }
+    | { kind: 'example'; colId: string; folderId?: string; reqId: string; exampleId: string }
     | { kind: 'collection'; colId: string }
     | { kind: 'collection_end'; colId: string };
 
 export const buildDragId = (d: DragData): string =>
     d.kind === 'request'
         ? `drag:req:${d.colId}:${d.folderId ?? '_'}:${d.reqId}`
-        : `drag:folder:${d.colId}:${d.folderId}`;
+        : d.kind === 'example'
+            ? `drag:ex:${d.colId}:${d.folderId ?? '_'}:${d.reqId}:${d.exampleId}`
+            : `drag:folder:${d.colId}:${d.folderId}`;
 
 export const buildDropId = (d: DropData): string => {
     switch (d.kind) {
@@ -35,6 +39,7 @@ export const buildDropId = (d: DropData): string => {
         case 'folder':         return `drop:folder:${d.colId}:${d.folderId}`;
         case 'folder_before':  return `drop:folder_before:${d.colId}:${d.folderId}`;
         case 'folder_end':     return `drop:folder_end:${d.colId}:${d.folderId}`;
+        case 'example': return `drop:ex:${d.colId}:${d.folderId ?? '_'}:${d.reqId}:${d.exampleId}`;
         default: {
             const r = d as DropData & { kind: 'request' };
             return `drop:req:${r.colId}:${r.folderId ?? '_'}:${r.reqId}`;
@@ -81,6 +86,20 @@ export const resolveMoveArgs = (
             return {
                 src: { kind: 'request', colId: src.colId, folderId: src.folderId, reqId: src.reqId },
                 dest: { colId: dst.colId, folderId: undefined },
+            };
+        }
+        return null;
+    }
+
+    if (src.kind === 'example') {
+        if (src.colId !== dst.colId) return null;
+        if (dst.kind === 'example' && dst.exampleId !== src.exampleId) {
+            return { src: { kind: 'example', colId: src.colId, folderId: src.folderId, reqId: src.reqId, exampleId: src.exampleId }, dest: { colId: dst.colId, folderId: dst.folderId, reqId: dst.reqId, beforeExampleId: dst.exampleId } };
+        }
+        if (dst.kind === 'request' && dst.reqId !== src.reqId) {
+            return {
+                src: { kind: 'example', colId: src.colId, folderId: src.folderId, reqId: src.reqId, exampleId: src.exampleId },
+                dest: { colId: dst.colId, folderId: dst.folderId, reqId: dst.reqId },
             };
         }
         return null;
@@ -133,6 +152,7 @@ const toRequestItem = (r: RequestSummary) => ({
     name: r.name,
     method: r.method,
 });
+const toExampleItem = (e: ExampleSummary) => ({ type: 'example' as const, id: e.id, name: e.name, method: e.method });
 
 /**
  * Compute the `ReorderCollectionItemsPayload` that mirrors the optimistic
@@ -147,8 +167,39 @@ export const buildReorderPayload = (
     dst: DropData,
 ): ReorderCollectionItemsPayload | null => {
     if (src.kind === 'request') return buildRequestReorderPayload(col, src, dst);
+    if (src.kind === 'example') return buildExampleReorderPayload(col, src, dst);
     if (src.kind === 'folder') return buildFolderReorderPayload(col, src, dst);
     return null;
+};
+
+export const findRequestById = (requests: RequestSummary[], folders: Folder[], id: string): RequestSummary | undefined => {
+    const root = (requests || []).find((r) => r.id === id);
+    if (root) return root;
+    for (const f of folders || []) {
+        const found = findRequestById(f.requests || [], f.folders || [], id);
+        if (found) return found;
+    }
+    return undefined;
+};
+
+const buildExampleReorderPayload = (
+    col: Collection,
+    src: DragData & { kind: 'example' },
+    dst: DropData,
+): ReorderCollectionItemsPayload | null => {
+    if (col.id !== src.colId || !resolveMoveArgs(src, dst)) return null;
+    const destReqId = dst.kind === 'example' ? dst.reqId : dst.kind === 'request' ? dst.reqId : undefined;
+    if (!destReqId) return null;
+
+    const srcReq = findRequestById(col.requests || [], col.folders || [], src.reqId);
+    const destReq = findRequestById(col.requests || [], col.folders || [], destReqId);
+    const srcExample = (srcReq?.examples || []).find((e) => e.id === src.exampleId);
+    if (!destReq || !srcExample) return null;
+    if (dst.kind === 'example' && !destReq.examples?.some((e) => e.id === dst.exampleId)) return null;
+    const base = (destReq.examples || []).filter((e) => e.id !== src.exampleId);
+    const examples = spliceAt(base, srcExample, dst.kind === 'example' ? dst.exampleId : undefined, (e) => e.id);
+
+    return { parent_request_id: destReqId, items: examples.map(toExampleItem) };
 };
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

@@ -16,6 +16,10 @@ export interface RequestTabSnapshot {
     auth: AuthConfig;
 }
 
+export interface ExampleTabSnapshot extends RequestTabSnapshot {
+    response: ResponseData;
+}
+
 export interface BodyRaw {
     type: 'json' | 'xml' | 'html' | 'text';
     value: string;
@@ -69,6 +73,8 @@ export interface ExampleTab {
     response: ResponseData;
     isDirty: boolean;
     activeTab: string;
+    pinned?: boolean;
+    baseline?: ExampleTabSnapshot | null;
 }
 
 export interface EnvironmentTab {

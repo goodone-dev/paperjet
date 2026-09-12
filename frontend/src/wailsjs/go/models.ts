@@ -620,6 +620,7 @@ export namespace collection {
 	}
 	export class ReorderItemsRequest {
 	    parent_folder_id?: string;
+	    parent_request_id?: string;
 	    items?: CollectionTree[];
 	
 	    static createFrom(source: any = {}) {
@@ -629,6 +630,7 @@ export namespace collection {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.parent_folder_id = source["parent_folder_id"];
+	        this.parent_request_id = source["parent_request_id"];
 	        this.items = this.convertValues(source["items"], CollectionTree);
 	    }
 	
