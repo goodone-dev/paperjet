@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Copy, Check, Search, Maximize2, Minimize2, WrapText, Inbox, BookmarkPlus, Code2 } from 'lucide-react';
+import { Copy, Check, Search, Maximize2, Minimize2, WrapText, Inbox, BookmarkPlus, Code2, LoaderCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { tokenizeJSON } from '@/lib/json-format';
 import type { ResponseData, ResponseKeyValue } from '@/types/response';
@@ -58,6 +58,7 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
     const [saved, setSaved] = useState(false);
     const [formatMode, setFormatMode] = useState<string>('pretty');
     const [wrapText, setWrapText] = useState(false);
+    const [isBeautifying, setIsBeautifying] = useState(false);
     const editorRef = useRef<ReactCodeMirrorRef>(null);
     const update = useCallback((patch: Partial<ResponseData>) => {
         if (!response) return;
@@ -99,8 +100,16 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
     const handleBeautify = useCallback(() => {
         if (!response?.body) return;
 
-        const beautified = beautify(bodyType, response.body);
-        update({ body: beautified });
+        setIsBeautifying(true);
+        // Let the loading state paint before synchronous formatting.
+        requestAnimationFrame(() => setTimeout(() => {
+            try {
+                const beautified = beautify(bodyType, response.body);
+                update({ body: beautified });
+            } finally {
+                setIsBeautifying(false);
+            }
+        }, 0));
     }, [bodyType, response, update]);
 
     if (isSending) {
@@ -200,9 +209,11 @@ export const ResponsePanel: React.FC<ResponsePanelProps> = ({
                             size="sm"
                             className="h-7 text-xs gap-1.5"
                             onClick={handleBeautify}
+                            disabled={isBeautifying}
                             data-testid="beautify-btn"
                         >
-                            <Code2 className="h-3.5 w-3.5" /> Beautify
+                            {isBeautifying ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Code2 className="h-3.5 w-3.5" />}
+                            {isBeautifying ? 'Beautifying' : 'Beautify'}
                         </Button>
                     )}
                     <Button

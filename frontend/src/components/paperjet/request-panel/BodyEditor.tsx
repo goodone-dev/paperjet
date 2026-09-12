@@ -1,9 +1,9 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Code2 } from 'lucide-react';
+import { Code2, LoaderCircle } from 'lucide-react';
 import { KeyValueEditor } from '../KeyValueEditor';
 import { CodeEditor } from '../CodeEditor';
 import { beautify } from '@/lib/raw-beautifier';
@@ -18,6 +18,7 @@ interface BodyEditorProps {
 }
 
 export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVariables = [] }) => {
+    const [isBeautifying, setIsBeautifying] = useState(false);
     const types = [
         { id: 'none', label: 'none', disabled: false },
         { id: 'form-data', label: 'form-data', disabled: false },
@@ -30,8 +31,17 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
     const handleBeautify = useCallback(() => {
         if (request.bodyType !== 'raw' || !request.bodyRaw?.value) return;
 
-        const beautified = beautify(request.bodyRaw.type || 'json', request.bodyRaw.value);
-        update({ bodyRaw: { ...request.bodyRaw, value: beautified } as BodyRaw });
+        const bodyRaw = request.bodyRaw;
+        setIsBeautifying(true);
+        // Let the loading state paint before synchronous formatting.
+        requestAnimationFrame(() => setTimeout(() => {
+            try {
+                const beautified = beautify(bodyRaw.type || 'json', bodyRaw.value);
+                update({ bodyRaw: { ...bodyRaw, value: beautified } });
+            } finally {
+                setIsBeautifying(false);
+            }
+        }, 0));
     }, [request.bodyType, request.bodyRaw, update]);
 
     return (
@@ -69,8 +79,9 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({ request, update, envVari
                                 </SelectContent>
                             </Select>
                         )}
-                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBeautify}>
-                            <Code2 className="h-3.5 w-3.5" /> Beautify
+                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBeautify} disabled={isBeautifying}>
+                            {isBeautifying ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Code2 className="h-3.5 w-3.5" />}
+                            {isBeautifying ? 'Beautifying' : 'Beautify'}
                         </Button>
                     </div>
                 </RadioGroup>
